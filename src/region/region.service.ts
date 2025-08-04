@@ -17,13 +17,14 @@ export class RegionService {
   async create(createRegionDto: CreateRegionDto): Promise<RegionResponseDto> {
     this.logger.log(`Creating region with name: ${createRegionDto.name}`);
 
-    // Check if region with this name already exists
     const existingRegion = await this.prisma.region.findFirst({
       where: { name: createRegionDto.name },
     });
 
     if (existingRegion) {
-      this.logger.warn(`Region with name ${createRegionDto.name} already exists`);
+      this.logger.warn(
+        `Region with name ${createRegionDto.name} already exists`,
+      );
       throw new RegionAlreadyExistsException();
     }
 
@@ -58,23 +59,26 @@ export class RegionService {
     return region;
   }
 
-  async update(id: number, updateRegionDto: UpdateRegionDto): Promise<RegionResponseDto> {
+  async update(
+    id: number,
+    updateRegionDto: UpdateRegionDto,
+  ): Promise<RegionResponseDto> {
     this.logger.log(`Updating region with id: ${id}`);
 
-    // Check if region exists
     await this.findOne(id);
 
-    // Check if new name already exists (if name is being updated)
     if (updateRegionDto.name) {
       const existingRegion = await this.prisma.region.findFirst({
-        where: { 
+        where: {
           name: updateRegionDto.name,
           NOT: { id },
         },
       });
 
       if (existingRegion) {
-        this.logger.warn(`Region with name ${updateRegionDto.name} already exists`);
+        this.logger.warn(
+          `Region with name ${updateRegionDto.name} already exists`,
+        );
         throw new RegionAlreadyExistsException();
       }
     }
@@ -91,7 +95,6 @@ export class RegionService {
   async remove(id: number): Promise<void> {
     this.logger.log(`Removing region with id: ${id}`);
 
-    // Check if region exists
     await this.findOne(id);
 
     await this.prisma.region.delete({

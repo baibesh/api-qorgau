@@ -53,7 +53,6 @@ export class ProjectStatusValidationException extends CustomException {
   }
 }
 
-// ProjectType exceptions
 export class ProjectTypeNotFoundException extends CustomException {
   constructor() {
     super('PROJECT_TYPE_NOT_FOUND');
