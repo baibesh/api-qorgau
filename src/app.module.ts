@@ -6,6 +6,7 @@ import { PrismaModule } from './prisma/prisma.module';
 import { RegionModule } from './region/region.module';
 import { ProjectTypeModule } from './project-type/project-type.module';
 import { ProjectStatusModule } from './project-status/project-status.module';
+import { CompanyModule } from './company/company.module';
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { ProjectStatusModule } from './project-status/project-status.module';
     RegionModule,
     ProjectTypeModule,
     ProjectStatusModule,
+    CompanyModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -71,3 +71,22 @@ export class ProjectTypeValidationException extends CustomException {
     super('PROJECT_TYPE_VALIDATION_ERROR');
   }
 }
+
+// Company exceptions
+export class CompanyNotFoundException extends CustomException {
+  constructor() {
+    super('COMPANY_NOT_FOUND');
+  }
+}
+
+export class CompanyAlreadyExistsException extends CustomException {
+  constructor() {
+    super('COMPANY_ALREADY_EXISTS');
+  }
+}
+
+export class CompanyValidationException extends CustomException {
+  constructor() {
+    super('COMPANY_VALIDATION_ERROR');
+  }
+}

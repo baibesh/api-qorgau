@@ -50,6 +50,23 @@ export const ERROR_CODES = {
     statusCode: 400,
   },
 
+  // Company errors
+  COMPANY_NOT_FOUND: {
+    code: 'COMPANY_NOT_FOUND',
+    message: 'Company not found',
+    statusCode: 404,
+  },
+  COMPANY_ALREADY_EXISTS: {
+    code: 'COMPANY_ALREADY_EXISTS',
+    message: 'Company with this name already exists',
+    statusCode: 409,
+  },
+  COMPANY_VALIDATION_ERROR: {
+    code: 'COMPANY_VALIDATION_ERROR',
+    message: 'Company validation failed',
+    statusCode: 400,
+  },
+
   // General errors
   INTERNAL_SERVER_ERROR: {
     code: 'INTERNAL_SERVER_ERROR',
