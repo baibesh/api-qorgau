@@ -9,8 +9,10 @@ datasource db {
 }
 
 model Region {
-  id   Int    @id @default(autoincrement())
-  name String
+  id      Int       @id @default(autoincrement())
+  name    String
+  users   User[]
+  Company Company[]
 }
 
 model ProjectStatus {
@@ -23,4 +25,134 @@ model ProjectType {
   id          Int    @id @default(autoincrement())
   name        String
   description String
+}
+
+model Role {
+  id                      Int                      @id @default(autoincrement())
+  name                    String                   @unique
+  description             String?
+  createdAt               DateTime                 @default(now())
+  updatedAt               DateTime                 @updatedAt
+  createdBy               Int?
+  creator                 User?                    @relation("RoleCreatedBy", fields: [createdBy], references: [id])
+  userRoles               UserRole[]
+  rolePermissions         RolePermission[]
+  registrationInvitations RegistrationInvitation[]
+}
+
+model Permission {
+  id              Int              @id @default(autoincrement())
+  name            String           @unique
+  description     String?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  rolePermissions RolePermission[]
+}
+
+model UserRole {
+  id         Int      @id @default(autoincrement())
+  userId     Int
+  roleId     Int
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role       Role     @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  assignedAt DateTime @default(now())
+  assignedBy Int?
+  assigner   User?    @relation("UserRoleAssignedBy", fields: [assignedBy], references: [id])
+
+  @@unique([userId, roleId])
+}
+
+model RolePermission {
+  id           Int        @id @default(autoincrement())
+  roleId       Int
+  permissionId Int
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+  grantedAt    DateTime   @default(now())
+  grantedBy    Int?
+  granter      User?      @relation("RolePermissionGrantedBy", fields: [grantedBy], references: [id])
+
+  @@unique([roleId, permissionId])
+}
+
+model User {
+  id              Int                      @id @default(autoincrement())
+  email           String                   @unique
+  password_hash   String
+  phone           String?
+  full_name       String
+  isAdmin         Boolean                  @default(false)
+  status          UserStatus               @default(ACTIVE)
+  registered_at   DateTime                 @default(now())
+  last_login      DateTime?
+  created_by      Int?
+  creator         User?                    @relation("UserCreatedBy", fields: [created_by], references: [id])
+  created_users   User[]                   @relation("UserCreatedBy")
+  region_id       Int?
+  region          Region?                  @relation(fields: [region_id], references: [id])
+  profile         UserProfile?
+  sentInvitations RegistrationInvitation[] @relation("InvitedBy")
+  updatedAt       DateTime                 @updatedAt
+
+  userRoles              UserRole[]
+  createdRoles           Role[]           @relation("RoleCreatedBy")
+  assignedUserRoles      UserRole[]       @relation("UserRoleAssignedBy")
+  grantedRolePermissions RolePermission[] @relation("RolePermissionGrantedBy")
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+  PENDING
+}
+
+model Company {
+  id          Int           @id @default(autoincrement())
+  name        String        @unique
+  description String?
+  inn         String?       @unique
+  address     String?
+  regionId    Int?
+  region      Region?       @relation(fields: [regionId], references: [id])
+  profiles    UserProfile[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model UserProfile {
+  id     Int  @id @default(autoincrement())
+  userId Int  @unique
+  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  companyId Int?
+  company   Company? @relation(fields: [companyId], references: [id])
+
+  position String?
+  avatar   String?
+  address  String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model RegistrationInvitation {
+  id         Int                          @id @default(autoincrement())
+  email      String
+  code       String                       @unique
+  status     RegistrationInvitationStatus @default(PENDING)
+  invited_by Int
+  inviter    User                         @relation("InvitedBy", fields: [invited_by], references: [id])
+  role_id    Int
+  role       Role                         @relation(fields: [role_id], references: [id])
+  created_at DateTime                     @default(now())
+  expires_at DateTime
+}
+
+enum RegistrationInvitationStatus {
+  PENDING
+  ACCEPTED
+  EXPIRED
+  CANCELLED
 }
