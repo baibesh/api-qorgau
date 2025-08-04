@@ -3,6 +3,9 @@ import { ConfigModule } from '@nestjs/config';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { PrismaModule } from './prisma/prisma.module';
+import { RegionModule } from './region/region.module';
+import { ProjectTypeModule } from './project-type/project-type.module';
+import { ProjectStatusModule } from './project-status/project-status.module';
 
 @Module({
   imports: [
@@ -10,6 +13,9 @@ import { PrismaModule } from './prisma/prisma.module';
       isGlobal: true,
     }),
     PrismaModule,
+    RegionModule,
+    ProjectTypeModule,
+    ProjectStatusModule,
   ],
   controllers: [AppController],
   providers: [AppService],
