@@ -13,7 +13,7 @@ export class EnumsController {
   @ApiQuery({
     name: 'lang',
     required: false,
-    description: 'Language code (ru, en)',
+    description: 'Language code (ru, en, kk)',
     example: 'ru',
   })
   @ApiResponse({
@@ -30,7 +30,7 @@ export class EnumsController {
   @ApiQuery({
     name: 'lang',
     required: false,
-    description: 'Language code (ru, en)',
+    description: 'Language code (ru, en, kk)',
     example: 'ru',
   })
   @ApiResponse({

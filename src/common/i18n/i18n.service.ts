@@ -4,6 +4,7 @@ export interface TranslationMap {
   [key: string]: {
     ru: string;
     en: string;
+    kk: string;
   };
 }
 
@@ -14,36 +15,44 @@ export class I18nService {
       ACTIVE: {
         ru: 'Активный',
         en: 'Active',
+        kk: 'Белсенді',
       },
       INACTIVE: {
         ru: 'Неактивный',
         en: 'Inactive',
+        kk: 'Белсенді емес',
       },
       SUSPENDED: {
         ru: 'Заблокированный',
         en: 'Suspended',
+        kk: 'Бұғатталған',
       },
       PENDING: {
         ru: 'Ожидает',
         en: 'Pending',
+        kk: 'Күтуде',
       },
     },
     RegistrationInvitationStatus: {
       PENDING: {
         ru: 'Ожидает',
         en: 'Pending',
+        kk: 'Күтуде',
       },
       ACCEPTED: {
         ru: 'Принято',
         en: 'Accepted',
+        kk: 'Қабылданды',
       },
       EXPIRED: {
         ru: 'Истекло',
         en: 'Expired',
+        kk: 'Мерзімі өтті',
       },
       CANCELLED: {
         ru: 'Отменено',
         en: 'Cancelled',
+        kk: 'Бас тартылды',
       },
     },
   };
