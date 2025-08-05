@@ -7,6 +7,7 @@ import { RegionModule } from './region/region.module';
 import { ProjectTypeModule } from './project-type/project-type.module';
 import { ProjectStatusModule } from './project-status/project-status.module';
 import { CompanyModule } from './company/company.module';
+import { EnumsModule } from './enums/enums.module';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { CompanyModule } from './company/company.module';
     ProjectTypeModule,
     ProjectStatusModule,
     CompanyModule,
+    EnumsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
