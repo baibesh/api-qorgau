@@ -8,6 +8,7 @@ import { ProjectTypeModule } from './project-type/project-type.module';
 import { ProjectStatusModule } from './project-status/project-status.module';
 import { CompanyModule } from './company/company.module';
 import { EnumsModule } from './enums/enums.module';
+import { AuthModule } from './auth/auth.module';
 
 @Module({
   imports: [
@@ -20,6 +21,7 @@ import { EnumsModule } from './enums/enums.module';
     ProjectStatusModule,
     CompanyModule,
     EnumsModule,
+    AuthModule,
   ],
   controllers: [AppController],
   providers: [AppService],
