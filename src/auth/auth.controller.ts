@@ -11,11 +11,20 @@ import {
   Logger,
 } from '@nestjs/common';
 import type { Response, Request } from 'express';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBearerAuth,
+} from '@nestjs/swagger';
 import { AuthService } from './auth.service';
 import { JwtAuthGuard } from './jwt-auth.guard';
 import { LoginDto } from './dto/login.dto';
-import { AuthResponseDto, RefreshResponseDto, UserResponseDto } from './dto/auth-response.dto';
+import {
+  AuthResponseDto,
+  RefreshResponseDto,
+  UserResponseDto,
+} from './dto/auth-response.dto';
 
 @ApiTags('Authentication')
 @Controller('auth')

@@ -1,6 +1,5 @@
 generator client {
   provider = "prisma-client-js"
-  output   = "../generated/prisma"
 }
 
 datasource db {
@@ -24,7 +23,7 @@ enum RegistrationInvitationStatus {
 
 model Region {
   id      Int       @id @default(autoincrement())
-  name    String
+  name    String    @unique
   users   User[]
   Company Company[]
   Project Project[]
