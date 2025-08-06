@@ -10,7 +10,7 @@ async function bootstrap() {
   app.use(cookieParser());
 
   app.enableCors({
-    origin: ['https://ws.qorgau.kz', 'http://ws.qorgau.kz'],
+    origin: true,
     credentials: true,
   });
 
