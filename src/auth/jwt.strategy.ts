@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { Injectable, UnauthorizedException, Logger } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { ConfigService } from '@nestjs/config';
@@ -7,6 +7,8 @@ import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
+  private readonly logger = new Logger(JwtStrategy.name);
+
   constructor(
     private configService: ConfigService,
     private prisma: PrismaService,
@@ -15,7 +17,10 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       jwtFromRequest: ExtractJwt.fromExtractors([
         ExtractJwt.fromAuthHeaderAsBearerToken(),
         (request: Request) => {
-          return request?.cookies?.access_token;
+          const token = request?.cookies?.access_token;
+          console.log('Cookie extraction - cookies:', request?.cookies);
+          console.log('Cookie extraction - access_token:', token);
+          return token;
         },
       ]),
       ignoreExpiration: false,
@@ -24,6 +29,8 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   }
 
   async validate(payload: any) {
+    this.logger.debug(`JWT validation started for payload: ${JSON.stringify(payload)}`);
+    
     const user = await this.prisma.user.findUnique({
       where: { id: payload.sub },
       select: {
@@ -35,14 +42,20 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       },
     });
 
+    this.logger.debug(`User found: ${JSON.stringify(user)}`);
+
     if (!user) {
+      this.logger.error('User not found during JWT validation');
       throw new UnauthorizedException('User not found');
     }
 
     if (user.status !== 'ACTIVE') {
+      this.logger.error(`User account is not active: ${user.status}`);
       throw new UnauthorizedException('User account is not active');
     }
 
-    return { userId: user.id, email: user.email, isAdmin: user.isAdmin };
+    const result = { userId: user.id, email: user.email, isAdmin: user.isAdmin };
+    this.logger.debug(`JWT validation successful: ${JSON.stringify(result)}`);
+    return result;
   }
 }
