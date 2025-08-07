@@ -9,6 +9,9 @@ import { ProjectStatusModule } from './project-status/project-status.module';
 import { CompanyModule } from './company/company.module';
 import { EnumsModule } from './enums/enums.module';
 import { AuthModule } from './auth/auth.module';
+import { PermissionModule } from './permission/permission.module';
+import { RoleModule } from './role/role.module';
+import { UserModule } from './user/user.module';
 
 @Module({
   imports: [
@@ -22,6 +25,9 @@ import { AuthModule } from './auth/auth.module';
     CompanyModule,
     EnumsModule,
     AuthModule,
+    PermissionModule,
+    RoleModule,
+    UserModule,
   ],
   controllers: [AppController],
   providers: [AppService],

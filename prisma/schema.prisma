@@ -99,6 +99,7 @@ model User {
   phone           String?
   full_name       String
   isAdmin         Boolean                  @default(false)
+  isDeleted       Boolean                  @default(false)
   status          UserStatus               @default(ACTIVE)
   registered_at   DateTime                 @default(now())
   last_login      DateTime?
