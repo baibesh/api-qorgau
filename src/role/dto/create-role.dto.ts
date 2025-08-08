@@ -1,5 +1,12 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsString, IsNotEmpty, MaxLength, IsOptional } from 'class-validator';
+import {
+  IsString,
+  IsNotEmpty,
+  MaxLength,
+  IsOptional,
+  IsArray,
+  IsInt,
+} from 'class-validator';
 
 export class CreateRoleDto {
   @ApiProperty({
@@ -22,4 +29,15 @@ export class CreateRoleDto {
   @IsOptional()
   @MaxLength(500)
   description?: string;
+
+  @ApiProperty({
+    description: 'IDs of permissions to be linked to the role upon creation',
+    example: [1, 2, 3],
+    required: false,
+    type: [Number],
+  })
+  @IsOptional()
+  @IsArray()
+  @IsInt({ each: true })
+  permissionIds?: number[];
 }
