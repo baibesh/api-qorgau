@@ -15,6 +15,8 @@ import { UserModule } from './user/user.module';
 import { ProjectsModule } from './projects/projects.module';
 import { KanbanBoardModule } from './kanban-board/kanban-board.module';
 import { KanbanColumnModule } from './kanban-column/kanban-column.module';
+import { ProjectLogModule } from './project-log/project-log.module';
+import { ProjectCommentModule } from './project-comment/project-comment.module';
 
 @Module({
   imports: [
@@ -34,6 +36,8 @@ import { KanbanColumnModule } from './kanban-column/kanban-column.module';
     ProjectsModule,
     KanbanBoardModule,
     KanbanColumnModule,
+    ProjectLogModule,
+    ProjectCommentModule,
   ],
   controllers: [AppController],
   providers: [AppService],
