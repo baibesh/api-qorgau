@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
+import { Injectable, NotFoundException, ConflictException, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
@@ -14,6 +14,7 @@ export interface UserFilters {
 
 @Injectable()
 export class UserService {
+  private readonly logger = new Logger(UserService.name);
   constructor(private prisma: PrismaService) {}
 
   async create(createUserDto: CreateUserDto) {
@@ -177,6 +178,87 @@ export class UserService {
     });
 
     return { message: 'User successfully deleted' };
+  }
+
+  async getProfile(userId: number) {
+    this.logger.log(`Fetching profile for user ${userId}`);
+    const user = await this.prisma.user.findFirst({ where: { id: userId, isDeleted: false } });
+    if (!user) {
+      throw new NotFoundException(`User with ID ${userId} not found`);
+    }
+    const profile = await this.prisma.userProfile.findUnique({ where: { userId } });
+    if (!profile) {
+      throw new NotFoundException(`Profile for user ${userId} not found`);
+    }
+    return profile;
+  }
+
+  async updateProfile(userId: number, data: Partial<{ companyId?: number; position?: string; avatar?: string; address?: string }>) {
+    this.logger.log(`Updating profile for user ${userId}`);
+    const user = await this.prisma.user.findFirst({ where: { id: userId, isDeleted: false } });
+    if (!user) {
+      throw new NotFoundException(`User with ID ${userId} not found`);
+    }
+
+    // Upsert profile
+    const profile = await this.prisma.userProfile.upsert({
+      where: { userId },
+      update: data,
+      create: { userId, ...data },
+    });
+    return profile;
+  }
+
+  async getStats() {
+    this.logger.log('Gathering users stats');
+    const [users, projects, roles, companies] = await Promise.all([
+      this.prisma.user.count({ where: { isDeleted: false } }),
+      this.prisma.project.count(),
+      this.prisma.role.count(),
+      this.prisma.company.count(),
+    ]);
+    return {
+      users,
+      projects,
+      roles,
+      companies,
+    };
+  }
+
+  async search(q: string) {
+    this.logger.log(`Universal search: ${q}`);
+    const term = q?.trim();
+    if (!term) return { users: [], projects: [], companies: [] };
+
+    const [users, projects, companies] = await Promise.all([
+      this.prisma.user.findMany({
+        where: {
+          isDeleted: false,
+          OR: [
+            { email: { contains: term, mode: 'insensitive' } },
+            { full_name: { contains: term, mode: 'insensitive' } },
+            { phone: { contains: term } },
+          ],
+        },
+        take: 20,
+        orderBy: { registered_at: 'desc' },
+        select: { id: true, email: true, full_name: true, phone: true },
+      }),
+      this.prisma.project.findMany({
+        where: { name: { contains: term, mode: 'insensitive' } },
+        take: 20,
+        orderBy: { createdAt: 'desc' },
+        select: { id: true, name: true, code: true, companyId: true },
+      }),
+      this.prisma.company.findMany({
+        where: { name: { contains: term, mode: 'insensitive' } },
+        take: 20,
+        orderBy: { createdAt: 'desc' },
+        select: { id: true, name: true, inn: true },
+      }),
+    ]);
+
+    return { users, projects, companies };
   }
 
   private formatUserResponse(user: any) {

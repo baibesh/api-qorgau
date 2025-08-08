@@ -4,6 +4,7 @@ import {
   Post,
   Body,
   Patch,
+  Put,
   Param,
   Delete,
   Query,
@@ -14,6 +15,8 @@ import { UserService, UserFilters } from './user.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { UserResponseDto } from './dto/user-response.dto';
+import { UserProfileResponseDto } from './dto/user-profile-response.dto';
+import { UpdateUserProfileDto } from './dto/update-user-profile.dto';
 import { UserStatus } from '@prisma/client';
 
 @ApiTags('users')
@@ -60,6 +63,21 @@ export class UserController {
     return this.userService.findAll(filters);
   }
 
+  @Get('stats')
+  @ApiOperation({ summary: 'Statistics for users, projects, roles, companies' })
+  @ApiResponse({ status: 200, description: 'Stats payload', schema: { type: 'object', properties: { users: { type: 'number' }, projects: { type: 'number' }, roles: { type: 'number' }, companies: { type: 'number' } } } })
+  getStats() {
+    return this.userService.getStats();
+  }
+
+  @Get('search')
+  @ApiOperation({ summary: 'Universal search by email, project name, company name' })
+  @ApiQuery({ name: 'q', required: true, description: 'Search term' })
+  @ApiResponse({ status: 200, description: 'Search results', schema: { type: 'object', properties: { users: { type: 'array', items: { type: 'object', properties: { id: { type: 'number' }, email: { type: 'string' }, full_name: { type: 'string' }, phone: { type: 'string' } } } }, projects: { type: 'array', items: { type: 'object', properties: { id: { type: 'number' }, name: { type: 'string' }, code: { type: 'string' }, companyId: { type: 'number' } } } }, companies: { type: 'array', items: { type: 'object', properties: { id: { type: 'number' }, name: { type: 'string' }, inn: { type: 'string' } } } } } } })
+  search(@Query('q') q: string) {
+    return this.userService.search(q);
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Get user by ID' })
   @ApiResponse({
@@ -88,7 +106,26 @@ export class UserController {
     return this.userService.update(id, updateUserDto);
   }
 
-  @Delete(':id')
+  @Get(':id/profile')
+    @ApiOperation({ summary: 'Get user profile by user ID' })
+    @ApiResponse({ status: 200, description: 'Profile fetched', type: UserProfileResponseDto })
+    @ApiResponse({ status: 404, description: 'User not found' })
+    getProfile(@Param('id', ParseIntPipe) id: number) {
+      return this.userService.getProfile(id);
+    }
+
+    @Put(':id/profile')
+    @ApiOperation({ summary: 'Create or update user profile by user ID' })
+    @ApiResponse({ status: 200, description: 'Profile upserted', type: UserProfileResponseDto })
+    @ApiResponse({ status: 404, description: 'User not found' })
+    updateProfile(
+      @Param('id', ParseIntPipe) id: number,
+      @Body() dto: UpdateUserProfileDto,
+    ) {
+      return this.userService.updateProfile(id, dto);
+    }
+
+    @Delete(':id')
   @ApiOperation({ summary: 'Soft delete user by ID' })
   @ApiResponse({
     status: 200,
