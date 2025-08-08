@@ -13,6 +13,8 @@ import { PermissionModule } from './permission/permission.module';
 import { RoleModule } from './role/role.module';
 import { UserModule } from './user/user.module';
 import { ProjectsModule } from './projects/projects.module';
+import { KanbanBoardModule } from './kanban-board/kanban-board.module';
+import { KanbanColumnModule } from './kanban-column/kanban-column.module';
 
 @Module({
   imports: [
@@ -30,6 +32,8 @@ import { ProjectsModule } from './projects/projects.module';
     RoleModule,
     UserModule,
     ProjectsModule,
+    KanbanBoardModule,
+    KanbanColumnModule,
   ],
   controllers: [AppController],
   providers: [AppService],
