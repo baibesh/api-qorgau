@@ -5,6 +5,7 @@ import {
   Get,
   Param,
   ParseIntPipe,
+  Patch,
   Post,
   Req,
   UseGuards,
@@ -24,6 +25,7 @@ import { KanbanBoardResponseDto } from './dto/kanban-board-response.dto';
 import { AddMemberDto } from './dto/add-member.dto';
 import { JoinBoardDto } from './dto/join-board.dto';
 import { KanbanBoardMemberResponseDto } from './dto/kanban-board-member-response.dto';
+import { UpdateKanbanBoardDto } from './dto/update-kanban-board.dto';
 
 @ApiTags('kanban-boards')
 @Controller('kanban-boards')
@@ -69,6 +71,19 @@ export class KanbanBoardController {
     @Req() req: any,
   ): Promise<KanbanBoardResponseDto> {
     return this.kanbanBoardService.findOne(id, req.user);
+  }
+
+  @Patch(':id')
+  @ApiOperation({ summary: 'Update a kanban board' })
+  @ApiParam({ name: 'id', type: Number, description: 'Board ID' })
+  @ApiBody({ type: UpdateKanbanBoardDto })
+  @ApiResponse({ status: 200, description: 'Board updated successfully', type: KanbanBoardResponseDto })
+  @ApiResponse({ status: 404, description: 'Kanban board not found' })
+  update(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: UpdateKanbanBoardDto,
+  ): Promise<KanbanBoardResponseDto> {
+    return this.kanbanBoardService.update(id, dto);
   }
 
   @Post(':id/members')

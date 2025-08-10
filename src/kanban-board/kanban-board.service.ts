@@ -9,6 +9,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { CreateKanbanBoardDto } from './dto/create-kanban-board.dto';
 import { KanbanBoardResponseDto } from './dto/kanban-board-response.dto';
 import { KanbanBoardMemberResponseDto } from './dto/kanban-board-member-response.dto';
+import { UpdateKanbanBoardDto } from './dto/update-kanban-board.dto';
 import { nanoid } from 'nanoid';
 
 interface RequestUser {
@@ -106,7 +107,7 @@ export class KanbanBoardService {
 
     try {
       await this.prisma.kanbanBoardMember.create({ data: { boardId, userId } });
-    } catch (e: any) {
+    } catch {
       // Unique constraint violation (already a member)
       throw new ConflictException('User is already a member of this board');
     }
@@ -159,5 +160,40 @@ export class KanbanBoardService {
     });
 
     return board as unknown as KanbanBoardResponseDto;
+  }
+
+  async update(
+    id: number,
+    dto: UpdateKanbanBoardDto,
+  ): Promise<KanbanBoardResponseDto> {
+    this.logger.log(`Updating kanban board with id: ${id}`);
+
+    const existing = await this.prisma.kanbanBoard.findUnique({
+      where: { id },
+      select: { id: true },
+    });
+    if (!existing) {
+      this.logger.warn(`Kanban board with id ${id} not found`);
+      throw new NotFoundException(`Kanban board with id ${id} not found`);
+    }
+
+    const updated = await this.prisma.kanbanBoard.update({
+      where: { id },
+      data: {
+        ...(dto.name !== undefined ? { name: dto.name } : {}),
+        ...(dto.description !== undefined
+          ? { description: dto.description }
+          : {}),
+      },
+      include: {
+        columns: {
+          orderBy: { position: 'asc' },
+          select: { id: true, name: true, position: true },
+        },
+      },
+    });
+
+    this.logger.log(`Kanban board with id ${id} updated successfully`);
+    return updated as unknown as KanbanBoardResponseDto;
   }
 }

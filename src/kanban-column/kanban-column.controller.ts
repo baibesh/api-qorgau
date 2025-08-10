@@ -6,7 +6,10 @@ import {
   ParseIntPipe,
   Post,
   Put,
+  Patch,
+  Req,
   UseGuards,
+  ParseArrayPipe,
 } from '@nestjs/common';
 import {
   ApiBearerAuth,
@@ -21,6 +24,7 @@ import { KanbanColumnService } from './kanban-column.service';
 import { CreateKanbanColumnDto } from './dto/create-kanban-column.dto';
 import { UpdateKanbanColumnDto } from './dto/update-kanban-column.dto';
 import { KanbanColumnResponseDto } from './dto/kanban-column-response.dto';
+import { ColumnOrderDto } from './dto/reorder-kanban-columns.dto';
 
 @ApiTags('kanban-columns')
 @Controller('kanban-columns')
@@ -69,5 +73,16 @@ export class KanbanColumnController {
     @Param('boardId', ParseIntPipe) boardId: number,
   ): Promise<KanbanColumnResponseDto[]> {
     return this.kanbanColumnService.findByBoard(boardId);
+  }
+
+  @Patch('reorder')
+  @ApiOperation({ summary: 'Reorder kanban columns by updating their positions' })
+  @ApiBody({ type: [ColumnOrderDto] })
+  @ApiResponse({ status: 200, description: 'Columns reordered successfully', type: [KanbanColumnResponseDto] })
+  reorder(
+    @Body(new ParseArrayPipe({ items: ColumnOrderDto })) items: ColumnOrderDto[],
+    @Req() req: any,
+  ): Promise<KanbanColumnResponseDto[]> {
+    return this.kanbanColumnService.reorder(items, req.user);
   }
 }
