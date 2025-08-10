@@ -121,6 +121,8 @@ model User {
   createdProjects  Project[]        @relation("ProjectCreatedBy")
   projectLogs      ProjectLog[]
   projectComments  ProjectComment[]
+
+  boardMemberships KanbanBoardMember[]
 }
 
 model Company {
@@ -166,12 +168,26 @@ model RegistrationInvitation {
 }
 
 model KanbanBoard {
-  id          Int            @id @default(autoincrement())
+  id          Int                 @id @default(autoincrement())
   name        String
   description String?
+  code        String              @unique
   columns     KanbanColumn[]
-  projects    Project[]      @relation("BoardProjects")
-  createdAt   DateTime       @default(now())
+  projects    Project[]           @relation("BoardProjects")
+  members     KanbanBoardMember[]
+  createdAt   DateTime            @default(now())
+}
+
+model KanbanBoardMember {
+  id        Int      @id @default(autoincrement())
+  boardId   Int
+  userId    Int
+  createdAt DateTime @default(now())
+
+  board KanbanBoard @relation(fields: [boardId], references: [id])
+  user  User        @relation(fields: [userId], references: [id])
+
+  @@unique([boardId, userId])
 }
 
 model KanbanColumn {

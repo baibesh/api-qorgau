@@ -25,6 +25,9 @@ export class KanbanBoardResponseDto {
   })
   description?: string;
 
+  @ApiProperty({ description: 'Unique board code', example: 'AbCdEfGhIj' })
+  code: string;
+
   @ApiProperty({
     description: 'Creation timestamp',
     example: '2024-08-07T05:56:00.000Z',
