@@ -166,11 +166,12 @@ model RegistrationInvitation {
 }
 
 model KanbanBoard {
-  id        Int            @id @default(autoincrement())
-  name      String
-  columns   KanbanColumn[]
-  projects  Project[]      @relation("BoardProjects")
-  createdAt DateTime       @default(now())
+  id          Int            @id @default(autoincrement())
+  name        String
+  description String?
+  columns     KanbanColumn[]
+  projects    Project[]      @relation("BoardProjects")
+  createdAt   DateTime       @default(now())
 }
 
 model KanbanColumn {

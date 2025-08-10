@@ -27,7 +27,7 @@ export class KanbanBoardService {
   async create(dto: CreateKanbanBoardDto): Promise<KanbanBoardResponseDto> {
     this.logger.log(`Creating kanban board: ${dto.name}`);
     const board = await this.prisma.kanbanBoard.create({
-      data: { name: dto.name },
+      data: { name: dto.name, description: dto.description ?? null },
       include: {
         columns: {
           orderBy: { position: 'asc' },

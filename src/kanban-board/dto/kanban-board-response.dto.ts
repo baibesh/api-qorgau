@@ -19,6 +19,13 @@ export class KanbanBoardResponseDto {
   name: string;
 
   @ApiProperty({
+    description: 'Board description',
+    example: 'Board for tracking sales pipeline',
+    required: false,
+  })
+  description?: string;
+
+  @ApiProperty({
     description: 'Creation timestamp',
     example: '2024-08-07T05:56:00.000Z',
   })
