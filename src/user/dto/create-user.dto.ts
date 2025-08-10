@@ -6,6 +6,8 @@ import {
   IsOptional,
   IsEnum,
   IsInt,
+  IsArray,
+  ArrayUnique,
 } from 'class-validator';
 import { UserStatus } from '@prisma/client';
 
@@ -61,4 +63,19 @@ export class CreateUserDto {
   @IsOptional()
   @IsInt()
   region_id?: number;
+
+  @ApiProperty({
+    description: 'Role IDs to assign to the user',
+    example: [1, 2],
+    required: false,
+    type: [Number],
+  })
+  @IsOptional()
+  @IsArray()
+  @ArrayUnique()
+  // each: true validation for IsInt is applied per element
+  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+  // @ts-ignore
+  @IsInt({ each: true })
+  roleIds?: number[];
 }

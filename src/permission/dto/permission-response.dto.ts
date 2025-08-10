@@ -42,18 +42,6 @@ export class PermissionResponseDto {
   description?: string;
 
   @ApiProperty({
-    description: 'Creation timestamp',
-    example: '2023-01-01T00:00:00.000Z',
-  })
-  createdAt: Date;
-
-  @ApiProperty({
-    description: 'Last update timestamp',
-    example: '2023-01-01T00:00:00.000Z',
-  })
-  updatedAt: Date;
-
-  @ApiProperty({
     description: 'List of roles that have this permission',
     type: [RoleInfoDto],
     example: [

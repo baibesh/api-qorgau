@@ -5,6 +5,8 @@ import {
   IsEmail,
   IsEnum,
   IsInt,
+  IsArray,
+  ArrayUnique,
 } from 'class-validator';
 import { UserStatus } from '@prisma/client';
 
@@ -54,4 +56,18 @@ export class UpdateUserDto {
   @IsOptional()
   @IsInt()
   region_id?: number;
+
+  @ApiProperty({
+    description: 'Role IDs to set for the user. If provided, replaces existing roles; pass empty array to clear roles.',
+    example: [1, 2],
+    required: false,
+    type: [Number],
+  })
+  @IsOptional()
+  @IsArray()
+  @ArrayUnique()
+  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+  // @ts-ignore
+  @IsInt({ each: true })
+  roleIds?: number[];
 }

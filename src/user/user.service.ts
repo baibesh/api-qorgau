@@ -31,12 +31,17 @@ export class UserService {
     const saltRounds = 10;
     const password_hash = await bcrypt.hash(createUserDto.password, saltRounds);
 
-    const { password, ...userData } = createUserDto;
+    const { password, roleIds, ...userData } = createUserDto as any;
 
     const user = await this.prisma.user.create({
       data: {
         ...userData,
         password_hash,
+        ...(Array.isArray(roleIds) ? {
+          userRoles: {
+            create: roleIds.map((roleId: number) => ({ roleId })),
+          },
+        } : {}),
       },
       include: {
         region: true,
@@ -142,16 +147,45 @@ export class UserService {
       }
     }
 
-    const user = await this.prisma.user.update({
+    const { roleIds, ...data } = updateUserDto as any;
+
+    // Update basic fields first
+    const updatedUser = await this.prisma.user.update({
       where: { id },
-      data: updateUserDto,
+      data,
+    });
+
+    // If roleIds provided, sync roles
+    if (Array.isArray(roleIds)) {
+      const currentUserRoles = await this.prisma.userRole.findMany({
+        where: { userId: id },
+        select: { roleId: true },
+      });
+      const currentRoleIds = new Set(currentUserRoles.map((ur) => ur.roleId));
+      const desiredRoleIds = new Set(roleIds);
+
+      const toDelete: number[] = [];
+      currentRoleIds.forEach((rid) => { if (!desiredRoleIds.has(rid)) toDelete.push(rid); });
+
+      const toCreate: number[] = [];
+      desiredRoleIds.forEach((rid) => { if (!currentRoleIds.has(rid)) toCreate.push(rid); });
+
+      await this.prisma.$transaction([
+        ...(toDelete.length ? [
+          this.prisma.userRole.deleteMany({ where: { userId: id, roleId: { in: toDelete } } }),
+        ] : []),
+        ...(toCreate.length ? [
+          this.prisma.userRole.createMany({ data: toCreate.map((roleId) => ({ userId: id, roleId })) }),
+        ] : []),
+      ]);
+    }
+
+    // Return user with relations
+    const user = await this.prisma.user.findUnique({
+      where: { id },
       include: {
         region: true,
-        userRoles: {
-          include: {
-            role: true,
-          },
-        },
+        userRoles: { include: { role: true } },
       },
     });
 

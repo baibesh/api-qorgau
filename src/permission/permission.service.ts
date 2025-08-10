@@ -135,7 +135,7 @@ export class PermissionService {
         `Cannot delete permission with id ${id} - it is linked to roles: ${roleNames}`,
       );
       throw new ConflictException(
-        `Cannot delete permission. It is linked to the following roles: ${roleNames}`,
+        'Нельзя удалить право, оно используется в ролях',
       );
     }
 
@@ -151,8 +151,6 @@ export class PermissionService {
       id: permission.id,
       name: permission.name,
       description: permission.description,
-      createdAt: permission.createdAt,
-      updatedAt: permission.updatedAt,
       roles: permission.rolePermissions.map((rp: any) => ({
         id: rp.role.id,
         name: rp.role.name,
