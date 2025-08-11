@@ -5,7 +5,6 @@ import {
   Param,
   ParseIntPipe,
   Post,
-  Put,
   Patch,
   Req,
   UseGuards,
@@ -45,8 +44,28 @@ export class KanbanColumnController {
     return this.kanbanColumnService.create(dto);
   }
 
-  @Put(':id')
-  @ApiOperation({ summary: 'Rename or change position of a kanban column' })
+  @Patch('reorder')
+  @ApiOperation({
+    summary: 'Reorder kanban columns by updating their positions',
+  })
+  @ApiBody({ type: [ColumnOrderDto] })
+  @ApiResponse({
+    status: 200,
+    description: 'Columns reordered successfully',
+    type: [KanbanColumnResponseDto],
+  })
+  reorder(
+    @Body(new ParseArrayPipe({ items: ColumnOrderDto }))
+    items: ColumnOrderDto[],
+    @Req() req: any,
+  ): Promise<KanbanColumnResponseDto[]> {
+    return this.kanbanColumnService.reorder(items, req.user);
+  }
+
+  @Patch(':id')
+  @ApiOperation({
+    summary: 'Update kanban column fields (name, position, color, description)',
+  })
   @ApiParam({ name: 'id', type: Number, description: 'Column ID' })
   @ApiBody({ type: UpdateKanbanColumnDto })
   @ApiResponse({
@@ -73,16 +92,5 @@ export class KanbanColumnController {
     @Param('boardId', ParseIntPipe) boardId: number,
   ): Promise<KanbanColumnResponseDto[]> {
     return this.kanbanColumnService.findByBoard(boardId);
-  }
-
-  @Patch('reorder')
-  @ApiOperation({ summary: 'Reorder kanban columns by updating their positions' })
-  @ApiBody({ type: [ColumnOrderDto] })
-  @ApiResponse({ status: 200, description: 'Columns reordered successfully', type: [KanbanColumnResponseDto] })
-  reorder(
-    @Body(new ParseArrayPipe({ items: ColumnOrderDto })) items: ColumnOrderDto[],
-    @Req() req: any,
-  ): Promise<KanbanColumnResponseDto[]> {
-    return this.kanbanColumnService.reorder(items, req.user);
   }
 }

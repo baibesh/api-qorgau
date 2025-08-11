@@ -30,4 +30,24 @@ export class CreateKanbanColumnDto {
   @Min(0)
   @IsOptional()
   position?: number;
+
+  @ApiProperty({
+    description: 'HEX or any color string (optional)',
+    example: '#FF9900',
+    required: false,
+  })
+  @IsString()
+  @IsOptional()
+  @MaxLength(64)
+  color?: string | null;
+
+  @ApiProperty({
+    description: 'Short description of the column purpose (optional)',
+    example: 'Tasks that are not yet started',
+    required: false,
+  })
+  @IsString()
+  @IsOptional()
+  @MaxLength(500)
+  description?: string | null;
 }

@@ -41,7 +41,13 @@ export class KanbanColumnService {
     }
 
     const column = await this.prisma.kanbanColumn.create({
-      data: { boardId: dto.boardId, name: dto.name, position },
+      data: {
+        boardId: dto.boardId,
+        name: dto.name,
+        position,
+        color: dto.color ?? null,
+        description: dto.description ?? null,
+      },
     });
 
     this.logger.log(`Kanban column created with id: ${column.id}`);
@@ -98,13 +104,11 @@ export class KanbanColumnService {
     this.logger.log(`Reordering ${items.length} kanban columns`);
 
     if (!items || items.length === 0) {
-      // Nothing to update; return empty list
       return [];
     }
 
     const ids = items.map((i) => i.id);
 
-    // Fetch columns and ensure all exist
     const columns = await this.prisma.kanbanColumn.findMany({
       where: { id: { in: ids } },
       select: { id: true, boardId: true },
@@ -117,7 +121,6 @@ export class KanbanColumnService {
       throw new NotFoundException('One or more columns not found');
     }
 
-    // Ensure all belong to the same board (typical for reorder)
     const boardIds = Array.from(new Set(columns.map((c) => c.boardId)));
     if (boardIds.length !== 1) {
       throw new BadRequestException(
@@ -126,7 +129,6 @@ export class KanbanColumnService {
     }
     const boardId = boardIds[0];
 
-    // Permission check: admin or member of the board
     if (!user.isAdmin) {
       const membership = await this.prisma.kanbanBoardMember.findFirst({
         where: { boardId, userId: user.userId },
@@ -140,7 +142,6 @@ export class KanbanColumnService {
       }
     }
 
-    // Transactional updates
     await this.prisma.$transaction(
       items.map((i) =>
         this.prisma.kanbanColumn.update({
@@ -150,7 +151,6 @@ export class KanbanColumnService {
       ),
     );
 
-    // Return updated list of columns for the board, sorted by position
     const updated = await this.prisma.kanbanColumn.findMany({
       where: { boardId },
       orderBy: { position: 'asc' },

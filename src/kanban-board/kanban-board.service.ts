@@ -37,7 +37,13 @@ export class KanbanBoardService {
       include: {
         columns: {
           orderBy: { position: 'asc' },
-          select: { id: true, name: true, position: true },
+          select: {
+            id: true,
+            name: true,
+            position: true,
+            color: true,
+            description: true,
+          },
         },
       },
       orderBy: { id: 'asc' },
@@ -57,7 +63,13 @@ export class KanbanBoardService {
       include: {
         columns: {
           orderBy: { position: 'asc' },
-          select: { id: true, name: true, position: true },
+          select: {
+            id: true,
+            name: true,
+            position: true,
+            color: true,
+            description: true,
+          },
         },
       },
     });
@@ -86,7 +98,13 @@ export class KanbanBoardService {
       include: {
         columns: {
           orderBy: { position: 'asc' },
-          select: { id: true, name: true, position: true },
+          select: {
+            id: true,
+            name: true,
+            position: true,
+            color: true,
+            description: true,
+          },
         },
       },
     });
@@ -147,7 +165,13 @@ export class KanbanBoardService {
       include: {
         columns: {
           orderBy: { position: 'asc' },
-          select: { id: true, name: true, position: true },
+          select: {
+            id: true,
+            name: true,
+            position: true,
+            color: true,
+            description: true,
+          },
         },
       },
     });
@@ -188,7 +212,13 @@ export class KanbanBoardService {
       include: {
         columns: {
           orderBy: { position: 'asc' },
-          select: { id: true, name: true, position: true },
+          select: {
+            id: true,
+            name: true,
+            position: true,
+            color: true,
+            description: true,
+          },
         },
       },
     });

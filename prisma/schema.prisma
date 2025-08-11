@@ -191,13 +191,15 @@ model KanbanBoardMember {
 }
 
 model KanbanColumn {
-  id        Int         @id @default(autoincrement())
-  boardId   Int
-  board     KanbanBoard @relation(fields: [boardId], references: [id])
-  name      String
-  position  Int
-  projects  Project[]
-  createdAt DateTime    @default(now())
+  id          Int         @id @default(autoincrement())
+  boardId     Int
+  board       KanbanBoard @relation(fields: [boardId], references: [id])
+  name        String
+  position    Int
+  color       String?
+  description String?
+  projects    Project[]
+  createdAt   DateTime    @default(now())
 }
 
 model Project {

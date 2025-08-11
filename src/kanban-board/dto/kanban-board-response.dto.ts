@@ -9,6 +9,20 @@ export class KanbanColumnBriefDto {
 
   @ApiProperty({ description: 'Column position', example: 1 })
   position: number;
+
+  @ApiProperty({
+    description: 'HEX or any color string',
+    example: '#FF9900',
+    required: false,
+  })
+  color?: string | null;
+
+  @ApiProperty({
+    description: 'Short description of the column purpose',
+    example: 'Tasks to be picked up',
+    required: false,
+  })
+  description?: string | null;
 }
 
 export class KanbanBoardResponseDto {

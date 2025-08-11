@@ -14,6 +14,20 @@ export class KanbanColumnResponseDto {
   position: number;
 
   @ApiProperty({
+    description: 'HEX or any color string',
+    example: '#FF9900',
+    required: false,
+  })
+  color?: string | null;
+
+  @ApiProperty({
+    description: 'Short description of the column purpose',
+    example: 'Tasks to be picked up',
+    required: false,
+  })
+  description?: string | null;
+
+  @ApiProperty({
     description: 'Creation timestamp',
     example: '2024-08-07T05:56:00.000Z',
   })
