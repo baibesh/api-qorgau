@@ -1,4 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
+import { ProjectResponseDto } from '../../projects/dto/project-response.dto';
 
 export class KanbanColumnBriefDto {
   @ApiProperty({ description: 'Column ID', example: 1 })
@@ -23,6 +24,13 @@ export class KanbanColumnBriefDto {
     required: false,
   })
   description?: string | null;
+
+  @ApiProperty({
+    description: 'Projects belonging to this column',
+    type: [ProjectResponseDto],
+    required: false,
+  })
+  projects?: ProjectResponseDto[];
 }
 
 export class KanbanBoardResponseDto {

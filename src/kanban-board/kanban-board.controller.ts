@@ -26,6 +26,7 @@ import { AddMemberDto } from './dto/add-member.dto';
 import { JoinBoardDto } from './dto/join-board.dto';
 import { KanbanBoardMemberResponseDto } from './dto/kanban-board-member-response.dto';
 import { UpdateKanbanBoardDto } from './dto/update-kanban-board.dto';
+import { KanbanBoardProjectsResponseDto } from './dto/kanban-board-projects.dto';
 
 @ApiTags('kanban-boards')
 @Controller('kanban-boards')
@@ -77,7 +78,11 @@ export class KanbanBoardController {
   @ApiOperation({ summary: 'Update a kanban board' })
   @ApiParam({ name: 'id', type: Number, description: 'Board ID' })
   @ApiBody({ type: UpdateKanbanBoardDto })
-  @ApiResponse({ status: 200, description: 'Board updated successfully', type: KanbanBoardResponseDto })
+  @ApiResponse({
+    status: 200,
+    description: 'Board updated successfully',
+    type: KanbanBoardResponseDto,
+  })
   @ApiResponse({ status: 404, description: 'Kanban board not found' })
   update(
     @Param('id', ParseIntPipe) id: number,
@@ -86,13 +91,32 @@ export class KanbanBoardController {
     return this.kanbanBoardService.update(id, dto);
   }
 
+  @Get(':id/projects')
+  @ApiOperation({ summary: 'Get board projects grouped by columns' })
+  @ApiParam({ name: 'id', type: Number, description: 'Board ID' })
+  @ApiResponse({
+    status: 200,
+    description: 'Projects grouped by columns',
+    type: KanbanBoardProjectsResponseDto,
+  })
+  getProjectsGrouped(
+    @Param('id', ParseIntPipe) id: number,
+  ): Promise<KanbanBoardProjectsResponseDto> {
+    return this.kanbanBoardService.getProjectsGroupedByColumns(id);
+  }
+
   @Delete(':id')
   @ApiOperation({ summary: 'Delete a kanban board by ID' })
   @ApiParam({ name: 'id', type: Number, description: 'Board ID' })
   @ApiResponse({ status: 200, description: 'Board deleted successfully' })
   @ApiResponse({ status: 404, description: 'Kanban board not found' })
-  @ApiResponse({ status: 409, description: 'Cannot delete board with existing projects' })
-  async remove(@Param('id', ParseIntPipe) id: number): Promise<{ message: string }> {
+  @ApiResponse({
+    status: 409,
+    description: 'Cannot delete board with existing projects',
+  })
+  async remove(
+    @Param('id', ParseIntPipe) id: number,
+  ): Promise<{ message: string }> {
     await this.kanbanBoardService.remove(id);
     return { message: 'Board deleted successfully' };
   }

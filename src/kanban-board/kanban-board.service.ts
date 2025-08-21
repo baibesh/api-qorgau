@@ -11,6 +11,8 @@ import { KanbanBoardResponseDto } from './dto/kanban-board-response.dto';
 import { KanbanBoardMemberResponseDto } from './dto/kanban-board-member-response.dto';
 import { UpdateKanbanBoardDto } from './dto/update-kanban-board.dto';
 import { nanoid } from 'nanoid';
+import { KanbanBoardProjectsResponseDto } from './dto/kanban-board-projects.dto';
+import type { ProjectResponseDto } from '../projects/dto/project-response.dto';
 
 interface RequestUser {
   userId: number;
@@ -112,7 +114,38 @@ export class KanbanBoardService {
       this.logger.warn(`Kanban board with id ${id} not found`);
       throw new NotFoundException(`Kanban board with id ${id} not found`);
     }
-    return board as unknown as KanbanBoardResponseDto;
+
+    // Fetch all projects for this board's columns and group by column
+    const projects = await this.prisma.project.findMany({
+      where: { kanbanColumn: { boardId: id } },
+      include: {
+        projectType: true,
+        region: true,
+        status: true,
+        company: true,
+        executor: { select: { id: true, email: true, full_name: true } },
+        creator: { select: { id: true, email: true, full_name: true } },
+        kanbanColumn: true,
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    const grouped = new Map<number, ProjectResponseDto[]>();
+    for (const p of projects) {
+      const list = grouped.get(p.kanbanColumnId) ?? [];
+      list.push(p as unknown as ProjectResponseDto);
+      grouped.set(p.kanbanColumnId, list);
+    }
+
+    const response = {
+      ...board,
+      columns: board.columns.map((c) => ({
+        ...c,
+        projects: grouped.get(c.id) ?? [],
+      })),
+    } as unknown as KanbanBoardResponseDto;
+
+    return response;
   }
 
   async addMember(boardId: number, userId: number): Promise<void> {
@@ -225,6 +258,62 @@ export class KanbanBoardService {
 
     this.logger.log(`Kanban board with id ${id} updated successfully`);
     return updated as unknown as KanbanBoardResponseDto;
+  }
+
+  async getProjectsGroupedByColumns(
+    boardId: number,
+  ): Promise<KanbanBoardProjectsResponseDto> {
+    this.logger.log(
+      `Fetching projects grouped by columns for board ${boardId}`,
+    );
+
+    const board = await this.prisma.kanbanBoard.findUnique({
+      where: { id: boardId },
+      select: { id: true },
+    });
+    if (!board) {
+      this.logger.warn(`Kanban board with id ${boardId} not found`);
+      throw new NotFoundException(`Kanban board with id ${boardId} not found`);
+    }
+
+    const columns = await this.prisma.kanbanColumn.findMany({
+      where: { boardId },
+      select: { id: true, name: true, position: true },
+      orderBy: { position: 'asc' },
+    });
+
+    // Fetch all projects for the board's columns in a single query
+    const projects = await this.prisma.project.findMany({
+      where: { kanbanColumn: { boardId } },
+      include: {
+        projectType: true,
+        region: true,
+        status: true,
+        company: true,
+        executor: { select: { id: true, email: true, full_name: true } },
+        creator: { select: { id: true, email: true, full_name: true } },
+        kanbanColumn: true,
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    const grouped = new Map<number, ProjectResponseDto[]>();
+    for (const p of projects) {
+      const list = grouped.get(p.kanbanColumnId) ?? [];
+      list.push(p);
+      grouped.set(p.kanbanColumnId, list);
+    }
+
+    const response: KanbanBoardProjectsResponseDto = {
+      boardId,
+      columns: columns.map((c) => ({
+        columnId: c.id,
+        name: c.name,
+        projects: grouped.get(c.id) ?? [],
+      })),
+    };
+
+    return response;
   }
 
   async remove(id: number): Promise<void> {
