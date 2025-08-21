@@ -18,14 +18,42 @@ export class ProjectsService {
   ): Promise<ProjectResponseDto> {
     this.logger.log(`Creating project with name: ${createProjectDto.name}`);
 
+    const {
+      name,
+      code,
+      projectTypeId,
+      regionId,
+      statusId,
+      contactName,
+      contactPhone,
+      contactEmail,
+      companyId,
+      executorId,
+      kanbanColumnId,
+      attachedFiles,
+      expectedDeadline,
+      comments,
+    } = createProjectDto;
+
     const project = await this.prisma.project.create({
       data: {
-        ...createProjectDto,
-        createdBy,
-        attachedFiles: createProjectDto.attachedFiles || [],
-        expectedDeadline: createProjectDto.expectedDeadline
-          ? new Date(createProjectDto.expectedDeadline)
-          : null,
+        name,
+        code,
+        contactName,
+        contactPhone,
+        contactEmail,
+        attachedFiles: attachedFiles || [],
+        expectedDeadline: expectedDeadline ? new Date(expectedDeadline) : null,
+        comments,
+        // Relations (required)
+        projectType: { connect: { id: projectTypeId } },
+        region: { connect: { id: regionId } },
+        status: { connect: { id: statusId } },
+        executor: { connect: { id: executorId } },
+        creator: { connect: { id: createdBy } },
+        kanbanColumn: { connect: { id: kanbanColumnId } },
+        // Optional relation
+        ...(companyId ? { company: { connect: { id: companyId } } } : {}),
       },
       include: {
         projectType: true,

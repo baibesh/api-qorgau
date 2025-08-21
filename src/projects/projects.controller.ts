@@ -56,7 +56,7 @@ export class ProjectsController {
     @Body() createProjectDto: CreateProjectDto,
     @Request() req: any,
   ): Promise<ProjectResponseDto> {
-    return this.projectsService.create(createProjectDto, req.user.id);
+    return this.projectsService.create(createProjectDto, req.user.userId);
   }
 
   @Get()
@@ -160,7 +160,7 @@ export class ProjectsController {
     @Body() updateProjectDto: UpdateProjectDto,
     @Request() req: any,
   ): Promise<ProjectResponseDto> {
-    return this.projectsService.update(id, updateProjectDto, req.user.id);
+    return this.projectsService.update(id, updateProjectDto, req.user.userId);
   }
 
   @Delete(':id')
@@ -216,7 +216,7 @@ export class ProjectsController {
     @Body() updateStatusDto: UpdateProjectStatusDto,
     @Request() req: any,
   ): Promise<ProjectResponseDto> {
-    return this.projectsService.updateStatus(id, updateStatusDto, req.user.id);
+    return this.projectsService.updateStatus(id, updateStatusDto, req.user.userId);
   }
 
   @Patch(':id/move-to-kanban/:columnId')
@@ -249,6 +249,6 @@ export class ProjectsController {
     @Param('columnId', ParseIntPipe) columnId: number,
     @Request() req: any,
   ): Promise<ProjectResponseDto> {
-    return this.projectsService.moveToKanbanColumn(id, columnId, req.user.id);
+    return this.projectsService.moveToKanbanColumn(id, columnId, req.user.userId);
   }
 }
