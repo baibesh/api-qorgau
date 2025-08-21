@@ -226,4 +226,46 @@ export class KanbanBoardService {
     this.logger.log(`Kanban board with id ${id} updated successfully`);
     return updated as unknown as KanbanBoardResponseDto;
   }
+
+  async remove(id: number): Promise<void> {
+    this.logger.log(`Deleting kanban board with id: ${id}`);
+
+    const existing = await this.prisma.kanbanBoard.findUnique({
+      where: { id },
+      select: { id: true },
+    });
+    if (!existing) {
+      this.logger.warn(`Kanban board with id ${id} not found`);
+      throw new NotFoundException(`Kanban board with id ${id} not found`);
+    }
+
+    // Check for existing projects under this board's columns to avoid FK issues
+    const projectsCount = await this.prisma.project.count({
+      where: { kanbanColumn: { boardId: id } },
+    });
+    if (projectsCount > 0) {
+      this.logger.warn(
+        `Cannot delete board ${id}: it contains ${projectsCount} project(s)`,
+      );
+      throw new ConflictException(
+        'Cannot delete board with existing projects. Please move or delete the projects first.',
+      );
+    }
+
+    await this.prisma.$transaction([
+      // Disconnect many-to-many relations with projects, if any
+      this.prisma.kanbanBoard.update({
+        where: { id },
+        data: { projects: { set: [] } },
+      }),
+      // Delete board members
+      this.prisma.kanbanBoardMember.deleteMany({ where: { boardId: id } }),
+      // Delete columns (no projects at this point)
+      this.prisma.kanbanColumn.deleteMany({ where: { boardId: id } }),
+      // Finally delete the board itself
+      this.prisma.kanbanBoard.delete({ where: { id } }),
+    ]);
+
+    this.logger.log(`Kanban board with id ${id} deleted successfully`);
+  }
 }

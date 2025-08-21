@@ -86,6 +86,17 @@ export class KanbanBoardController {
     return this.kanbanBoardService.update(id, dto);
   }
 
+  @Delete(':id')
+  @ApiOperation({ summary: 'Delete a kanban board by ID' })
+  @ApiParam({ name: 'id', type: Number, description: 'Board ID' })
+  @ApiResponse({ status: 200, description: 'Board deleted successfully' })
+  @ApiResponse({ status: 404, description: 'Kanban board not found' })
+  @ApiResponse({ status: 409, description: 'Cannot delete board with existing projects' })
+  async remove(@Param('id', ParseIntPipe) id: number): Promise<{ message: string }> {
+    await this.kanbanBoardService.remove(id);
+    return { message: 'Board deleted successfully' };
+  }
+
   @Post(':id/members')
   @ApiOperation({ summary: 'Add a user to the board members' })
   @ApiParam({ name: 'id', type: Number, description: 'Board ID' })
