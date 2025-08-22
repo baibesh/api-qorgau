@@ -37,11 +37,13 @@ export class UserService {
       data: {
         ...userData,
         password_hash,
-        ...(Array.isArray(roleIds) ? {
-          userRoles: {
-            create: roleIds.map((roleId: number) => ({ roleId })),
-          },
-        } : {}),
+        ...(Array.isArray(roleIds) && roleIds.length > 0
+          ? {
+              userRoles: {
+                create: roleIds.map((roleId: number) => ({ roleId })),
+              },
+            }
+          : {}),
       },
       include: {
         region: true,

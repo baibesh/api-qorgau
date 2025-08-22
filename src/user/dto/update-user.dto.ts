@@ -9,6 +9,7 @@ import {
   ArrayUnique,
 } from 'class-validator';
 import { UserStatus } from '@prisma/client';
+import { Expose, Transform } from 'class-transformer';
 
 export class UpdateUserDto {
   @ApiProperty({
@@ -69,5 +70,15 @@ export class UpdateUserDto {
   // eslint-disable-next-line @typescript-eslint/ban-ts-comment
   // @ts-ignore
   @IsInt({ each: true })
+  @Expose({ name: 'role_ids' })
+  @Transform(({ value, obj }) => {
+    const src = obj as Record<string, unknown> | undefined;
+    const aliasUnknown: unknown = src?.['role_ids'];
+    const val = Array.isArray(aliasUnknown) ? aliasUnknown : value;
+    if (Array.isArray(val)) {
+      return val.map((v: unknown) => Number(v as any));
+    }
+    return undefined;
+  })
   roleIds?: number[];
 }

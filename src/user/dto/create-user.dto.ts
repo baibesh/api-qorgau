@@ -8,7 +8,9 @@ import {
   IsInt,
   IsArray,
   ArrayUnique,
+  IsBoolean,
 } from 'class-validator';
+import { Expose, Transform } from 'class-transformer';
 import { UserStatus } from '@prisma/client';
 
 export class CreateUserDto {
@@ -65,6 +67,15 @@ export class CreateUserDto {
   region_id?: number;
 
   @ApiProperty({
+    description: 'Is admin user',
+    example: false,
+    required: false,
+  })
+  @IsOptional()
+  @IsBoolean()
+  isAdmin?: boolean;
+
+  @ApiProperty({
     description: 'Role IDs to assign to the user',
     example: [1, 2],
     required: false,
@@ -77,5 +88,18 @@ export class CreateUserDto {
   // eslint-disable-next-line @typescript-eslint/ban-ts-comment
   // @ts-ignore
   @IsInt({ each: true })
+  @Expose({ name: 'role_ids' })
+  @Transform(({ value, obj }) => {
+    // Accept both role_ids (snake_case alias) and roleIds (camelCase)
+    const src = obj as Record<string, unknown> | undefined;
+    const aliasUnknown: unknown = src?.['role_ids'];
+    const val = Array.isArray(aliasUnknown) ? aliasUnknown : value;
+    if (Array.isArray(val)) {
+      return val.map((v: unknown) => Number(v as any));
+    }
+    // If not provided, leave as undefined so it is optional
+    return undefined;
+  })
   roleIds?: number[];
+
 }
