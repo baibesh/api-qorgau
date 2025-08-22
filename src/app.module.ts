@@ -17,6 +17,7 @@ import { KanbanBoardModule } from './kanban-board/kanban-board.module';
 import { KanbanColumnModule } from './kanban-column/kanban-column.module';
 import { ProjectLogModule } from './project-log/project-log.module';
 import { ProjectCommentModule } from './project-comment/project-comment.module';
+import { FilesModule } from './files/files.module';
 
 @Module({
   imports: [
@@ -38,6 +39,7 @@ import { ProjectCommentModule } from './project-comment/project-comment.module';
     KanbanColumnModule,
     ProjectLogModule,
     ProjectCommentModule,
+    FilesModule,
   ],
   controllers: [AppController],
   providers: [AppService],

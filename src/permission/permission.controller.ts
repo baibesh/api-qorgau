@@ -8,6 +8,7 @@ import {
   Delete,
   ParseIntPipe,
   UseGuards,
+  Req,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -135,7 +136,7 @@ export class PermissionController {
     status: 409,
     description: 'Cannot delete permission - it is linked to roles',
   })
-  remove(@Param('id', ParseIntPipe) id: number): Promise<void> {
-    return this.permissionService.remove(id);
+  remove(@Param('id', ParseIntPipe) id: number, @Req() req: any): Promise<void> {
+    return this.permissionService.remove(id, req.user);
   }
 }

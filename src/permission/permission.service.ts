@@ -116,7 +116,7 @@ export class PermissionService {
     return this.mapToResponseDto(permission);
   }
 
-  async remove(id: number): Promise<void> {
+  async remove(id: number, user: { userId: number; isAdmin: boolean }): Promise<void> {
     this.logger.log(`Removing permission with id: ${id}`);
 
     await this.findOne(id);
@@ -129,13 +129,19 @@ export class PermissionService {
       },
     });
 
-    if (rolePermissions.length > 0) {
+    if (rolePermissions.length > 0 && !user.isAdmin) {
       const roleNames = rolePermissions.map(rp => rp.role.name).join(', ');
       this.logger.warn(
         `Cannot delete permission with id ${id} - it is linked to roles: ${roleNames}`,
       );
       throw new ConflictException(
         'Нельзя удалить право, оно используется в ролях',
+      );
+    }
+
+    if (rolePermissions.length > 0 && user.isAdmin) {
+      this.logger.warn(
+        `Admin override: deleting permission ${id} which is linked to roles. Cascade will remove role links.`,
       );
     }
 
