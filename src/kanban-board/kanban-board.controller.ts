@@ -101,8 +101,9 @@ export class KanbanBoardController {
   })
   getProjectsGrouped(
     @Param('id', ParseIntPipe) id: number,
+    @Req() req: any,
   ): Promise<KanbanBoardProjectsResponseDto> {
-    return this.kanbanBoardService.getProjectsGroupedByColumns(id);
+    return this.kanbanBoardService.getProjectsGroupedByColumns(id, req.user);
   }
 
   @Delete(':id')

@@ -16,11 +16,14 @@ import type { ProjectResponseDto } from '../projects/dto/project-response.dto';
 
 interface RequestUser {
   userId: number;
-  isAdmin: boolean;
+  isAdmin: boolean | string | number;
 }
 
 @Injectable()
 export class KanbanBoardService {
+  private normalizeIsAdmin(value: unknown): boolean {
+    return value === true || value === 1 || value === '1' || value === 'true';
+  }
   private readonly logger = new Logger(KanbanBoardService.name);
 
   constructor(private readonly prisma: PrismaService) {}
@@ -85,7 +88,8 @@ export class KanbanBoardService {
   ): Promise<KanbanBoardResponseDto> {
     this.logger.log(`Fetching kanban board with id: ${id}`);
 
-    if (!user.isAdmin) {
+    const isAdmin = this.normalizeIsAdmin(user?.isAdmin);
+    if (!isAdmin) {
       const isMember = await this.prisma.kanbanBoardMember.findFirst({
         where: { boardId: id, userId: user.userId },
         select: { id: true },
@@ -115,9 +119,14 @@ export class KanbanBoardService {
       throw new NotFoundException(`Kanban board with id ${id} not found`);
     }
 
-    // Fetch all projects for this board's columns and group by column
+    // Fetch projects for this board's columns. If user is not admin, filter by creator/executor
     const projects = await this.prisma.project.findMany({
-      where: { kanbanColumn: { boardId: id } },
+      where: {
+        kanbanColumn: { boardId: id },
+        ...(isAdmin
+          ? {}
+          : { OR: [{ createdBy: user.userId }, { executorId: user.userId }] }),
+      },
       include: {
         projectType: true,
         region: true,
@@ -262,6 +271,7 @@ export class KanbanBoardService {
 
   async getProjectsGroupedByColumns(
     boardId: number,
+    user: RequestUser,
   ): Promise<KanbanBoardProjectsResponseDto> {
     this.logger.log(
       `Fetching projects grouped by columns for board ${boardId}`,
@@ -276,6 +286,18 @@ export class KanbanBoardService {
       throw new NotFoundException(`Kanban board with id ${boardId} not found`);
     }
 
+    const isAdmin = this.normalizeIsAdmin(user?.isAdmin);
+
+    if (!isAdmin) {
+      const isMember = await this.prisma.kanbanBoardMember.findFirst({
+        where: { boardId, userId: user.userId },
+        select: { id: true },
+      });
+      if (!isMember) {
+        throw new ForbiddenException('Access denied to this board');
+      }
+    }
+
     const columns = await this.prisma.kanbanColumn.findMany({
       where: { boardId },
       select: { id: true, name: true, position: true },
@@ -284,7 +306,12 @@ export class KanbanBoardService {
 
     // Fetch all projects for the board's columns in a single query
     const projects = await this.prisma.project.findMany({
-      where: { kanbanColumn: { boardId } },
+      where: {
+        kanbanColumn: { boardId },
+        ...(isAdmin
+          ? {}
+          : { OR: [{ createdBy: user.userId }, { executorId: user.userId }] }),
+      },
       include: {
         projectType: true,
         region: true,
