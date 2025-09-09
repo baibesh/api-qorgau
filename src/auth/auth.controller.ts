@@ -25,6 +25,7 @@ import {
   RefreshResponseDto,
   UserResponseDto,
 } from './dto/auth-response.dto';
+import { PermissionsResponseDto } from './dto/permissions-response.dto';
 
 @ApiTags('Authentication')
 @Controller('auth')
@@ -161,5 +162,19 @@ export class AuthController {
   })
   async getCurrentUser(@Req() req: any): Promise<UserResponseDto> {
     return this.authService.getCurrentUser(req.user.userId);
+  }
+
+  @Get('permissions')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get all permissions of the authenticated user' })
+  @ApiResponse({
+    status: 200,
+    description: 'List of permission names for current user',
+    type: PermissionsResponseDto,
+  })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  async getMyPermissions(@Req() req: any) {
+    return this.authService.getUserPermissions(req.user.userId);
   }
 }

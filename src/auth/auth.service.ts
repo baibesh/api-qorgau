@@ -136,4 +136,47 @@ export class AuthService {
 
     return user;
   }
+
+  async getUserPermissions(
+    userId: number,
+  ): Promise<{ userId: number; permissions: string[] }> {
+    this.logger.log(`Fetching permissions for user ${userId}`);
+
+    const userWithRoles = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        userRoles: {
+          select: {
+            role: {
+              select: {
+                rolePermissions: {
+                  select: {
+                    permission: {
+                      select: { name: true },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!userWithRoles) {
+      throw new UnauthorizedException('User not found');
+    }
+
+    const permissionsSet = new Set<string>();
+    for (const ur of userWithRoles.userRoles) {
+      for (const rp of ur.role.rolePermissions) {
+        if (rp.permission?.name) permissionsSet.add(rp.permission.name);
+      }
+    }
+
+    const permissions = Array.from(permissionsSet).sort();
+    this.logger.log(`User ${userId} has ${permissions.length} permissions`);
+    return { userId: userWithRoles.id, permissions };
+  }
 }
