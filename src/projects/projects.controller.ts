@@ -28,6 +28,8 @@ import { ProjectResponseDto } from './dto/project-response.dto';
 import { ProjectFilterDto } from './dto/project-filter.dto';
 import { UpdateProjectStatusDto } from './dto/update-project-status.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { CheckProjectNameQueryDto } from './dto/check-project-name-query.dto';
+import { CheckProjectNameResponseDto } from './dto/check-project-name-response.dto';
 
 @ApiTags('projects')
 @Controller('projects')
@@ -102,6 +104,18 @@ export class ProjectsController {
   })
   findAll(@Query() filters: ProjectFilterDto): Promise<ProjectResponseDto[]> {
     return this.projectsService.findAll(filters);
+  }
+
+  @Get('check-name')
+  @ApiOperation({ summary: 'Check project name uniqueness and get similar names' })
+  @ApiQuery({ name: 'name', type: String, required: true, description: 'Project name to check' })
+  @ApiResponse({ status: 200, description: 'Uniqueness check result', type: CheckProjectNameResponseDto })
+  @ApiResponse({ status: 400, description: 'Bad request - validation failed' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  checkName(
+    @Query() query: CheckProjectNameQueryDto,
+  ): Promise<CheckProjectNameResponseDto> {
+    return this.projectsService.checkName(query.name);
   }
 
   @Get(':id')

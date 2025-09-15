@@ -5,6 +5,7 @@ import { UpdateProjectDto } from './dto/update-project.dto';
 import { ProjectResponseDto } from './dto/project-response.dto';
 import { ProjectFilterDto } from './dto/project-filter.dto';
 import { UpdateProjectStatusDto } from './dto/update-project-status.dto';
+import { CheckProjectNameResponseDto, SimilarProjectDto } from './dto/check-project-name-response.dto';
 
 @Injectable()
 export class ProjectsService {
@@ -131,6 +132,31 @@ export class ProjectsService {
 
     this.logger.log(`Found ${projects.length} projects`);
     return projects;
+  }
+
+  async checkName(name: string): Promise<CheckProjectNameResponseDto> {
+    this.logger.log(`Checking uniqueness for project name: ${name}`);
+
+    const exact = await this.prisma.project.findFirst({
+      where: { name: { equals: name, mode: 'insensitive' } },
+      select: { id: true },
+    });
+
+    const similarRaw = await this.prisma.project.findMany({
+      where: { name: { contains: name, mode: 'insensitive' } },
+      select: { id: true, name: true, code: true },
+      take: 10,
+      orderBy: { createdAt: 'desc' },
+    });
+
+    const similar: SimilarProjectDto[] = similarRaw.map((p) => ({ id: p.id, name: p.name, code: p.code ?? null }));
+
+    const response: CheckProjectNameResponseDto = {
+      isUnique: !Boolean(exact),
+      similar,
+    };
+
+    return response;
   }
 
   async findOne(id: number): Promise<ProjectResponseDto> {
