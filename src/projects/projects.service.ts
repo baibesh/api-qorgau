@@ -46,8 +46,8 @@ export class ProjectsService {
         attachedFiles: attachedFiles || [],
         expectedDeadline: expectedDeadline ? new Date(expectedDeadline) : null,
         comments,
-        // Relations (required)
-        projectType: { connect: { id: projectTypeId } },
+        // Relations
+        ...(projectTypeId ? { projectType: { connect: { id: projectTypeId } } } : {}),
         region: { connect: { id: regionId } },
         status: { connect: { id: statusId } },
         executor: { connect: { id: executorId } },

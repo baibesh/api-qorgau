@@ -29,10 +29,11 @@ export class CreateProjectDto {
   @ApiProperty({
     description: 'Project type ID',
     example: 1,
+    required: false,
   })
   @IsInt()
-  @IsNotEmpty()
-  projectTypeId: number;
+  @IsOptional()
+  projectTypeId?: number;
 
   @ApiProperty({
     description: 'Region ID',

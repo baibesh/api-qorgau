@@ -209,8 +209,8 @@ model Project {
   name String
   code String?
 
-  projectTypeId Int
-  projectType   ProjectType @relation(fields: [projectTypeId], references: [id])
+  projectTypeId Int?
+  projectType   ProjectType? @relation(fields: [projectTypeId], references: [id])
 
   regionId Int
   region   Region @relation(fields: [regionId], references: [id])

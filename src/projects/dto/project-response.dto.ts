@@ -23,23 +23,22 @@ export class ProjectResponseDto {
   @ApiProperty({
     description: 'Project type ID',
     example: 1,
+    nullable: true,
+    required: false,
   })
-  projectTypeId: number;
+  projectTypeId: number | null;
 
   @ApiProperty({
     description: 'Project type information',
-    type: 'object',
-    properties: {
-      id: { type: 'number', example: 1 },
-      name: { type: 'string', example: 'Infrastructure' },
-      description: { type: 'string', example: 'Infrastructure projects' },
-    },
+    nullable: true,
+    required: false,
+    type: Object,
   })
   projectType: {
     id: number;
     name: string;
     description: string;
-  };
+  } | null;
 
   @ApiProperty({
     description: 'Region ID',
