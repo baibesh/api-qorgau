@@ -4,7 +4,6 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { PrismaModule } from './prisma/prisma.module';
 import { RegionModule } from './region/region.module';
-import { ProjectTypeModule } from './project-type/project-type.module';
 import { ProjectStatusModule } from './project-status/project-status.module';
 import { CompanyModule } from './company/company.module';
 import { EnumsModule } from './enums/enums.module';
@@ -26,7 +25,6 @@ import { FilesModule } from './files/files.module';
     }),
     PrismaModule,
     RegionModule,
-    ProjectTypeModule,
     ProjectStatusModule,
     CompanyModule,
     EnumsModule,

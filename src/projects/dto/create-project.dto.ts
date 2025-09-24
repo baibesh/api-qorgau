@@ -6,7 +6,10 @@ import {
   IsInt,
   IsEmail,
   IsDateString,
+  IsArray,
+  ArrayNotEmpty,
 } from 'class-validator';
+import { Type } from 'class-transformer';
 
 export class CreateProjectDto {
   @ApiProperty({
@@ -26,14 +29,6 @@ export class CreateProjectDto {
   @IsOptional()
   code?: string;
 
-  @ApiProperty({
-    description: 'Project type ID',
-    example: 1,
-    required: false,
-  })
-  @IsInt()
-  @IsOptional()
-  projectTypeId?: number;
 
   @ApiProperty({
     description: 'Region ID',
@@ -87,12 +82,16 @@ export class CreateProjectDto {
   companyId?: number;
 
   @ApiProperty({
-    description: 'Executor user ID',
-    example: 1,
+    description: 'Executor user IDs',
+    example: [1, 2],
+    isArray: true,
+    required: false,
   })
-  @IsInt()
-  @IsNotEmpty()
-  executorId: number;
+  @IsOptional()
+  @IsArray()
+  @IsInt({ each: true })
+  @Type(() => Number)
+  executorIds?: number[];
 
   @ApiProperty({
     description: 'Kanban column ID',

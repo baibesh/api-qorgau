@@ -32,6 +32,60 @@ export class KanbanBoardService {
     return nanoid(10);
   }
 
+  private async fetchProjectsForBoard(
+    boardId: number,
+    user: RequestUser,
+  ): Promise<ProjectResponseDto[]> {
+    const isAdmin = this.normalizeIsAdmin(user?.isAdmin);
+    try {
+      const projects = await this.prisma.project.findMany({
+        where: {
+          kanbanColumn: { boardId },
+          ...(isAdmin
+            ? {}
+            : {
+                OR: [
+                  { createdBy: user.userId },
+                  { executors: { some: { id: user.userId } } },
+                ],
+              }),
+        },
+        include: {
+          region: true,
+          status: true,
+          company: true,
+          executors: { select: { id: true, email: true, full_name: true } },
+          creator: { select: { id: true, email: true, full_name: true } },
+          kanbanColumn: true,
+        },
+        orderBy: { createdAt: 'desc' },
+      });
+      return projects as unknown as ProjectResponseDto[];
+    } catch (e: any) {
+      if (e?.code === 'P2021') {
+        this.logger.warn(
+          'Executors relation table is missing. Falling back to query without executors and returning empty executors list.',
+        );
+        const projects = await this.prisma.project.findMany({
+          where: {
+            kanbanColumn: { boardId },
+            ...(isAdmin ? {} : { createdBy: user.userId }),
+          },
+          include: {
+            region: true,
+            status: true,
+            company: true,
+            creator: { select: { id: true, email: true, full_name: true } },
+            kanbanColumn: true,
+          },
+          orderBy: { createdAt: 'desc' },
+        });
+        return (projects as any[]).map((p) => ({ ...p, executors: [] }));
+      }
+      throw e;
+    }
+  }
+
   async findAll(user: RequestUser): Promise<KanbanBoardResponseDto[]> {
     this.logger.log('Fetching kanban boards with access filter');
     const where = user.isAdmin
@@ -119,25 +173,8 @@ export class KanbanBoardService {
       throw new NotFoundException(`Kanban board with id ${id} not found`);
     }
 
-    // Fetch projects for this board's columns. If user is not admin, filter by creator/executor
-    const projects = await this.prisma.project.findMany({
-      where: {
-        kanbanColumn: { boardId: id },
-        ...(isAdmin
-          ? {}
-          : { OR: [{ createdBy: user.userId }, { executorId: user.userId }] }),
-      },
-      include: {
-        projectType: true,
-        region: true,
-        status: true,
-        company: true,
-        executor: { select: { id: true, email: true, full_name: true } },
-        creator: { select: { id: true, email: true, full_name: true } },
-        kanbanColumn: true,
-      },
-      orderBy: { createdAt: 'desc' },
-    });
+    // Fetch projects for this board's columns with safe fallback when executors relation is missing
+    const projects = await this.fetchProjectsForBoard(id, user);
 
     const grouped = new Map<number, ProjectResponseDto[]>();
     for (const p of projects) {
@@ -304,25 +341,8 @@ export class KanbanBoardService {
       orderBy: { position: 'asc' },
     });
 
-    // Fetch all projects for the board's columns in a single query
-    const projects = await this.prisma.project.findMany({
-      where: {
-        kanbanColumn: { boardId },
-        ...(isAdmin
-          ? {}
-          : { OR: [{ createdBy: user.userId }, { executorId: user.userId }] }),
-      },
-      include: {
-        projectType: true,
-        region: true,
-        status: true,
-        company: true,
-        executor: { select: { id: true, email: true, full_name: true } },
-        creator: { select: { id: true, email: true, full_name: true } },
-        kanbanColumn: true,
-      },
-      orderBy: { createdAt: 'desc' },
-    });
+    // Fetch all projects with safe fallback when executors relation is missing
+    const projects = await this.fetchProjectsForBoard(boardId, user);
 
     const grouped = new Map<number, ProjectResponseDto[]>();
     for (const p of projects) {

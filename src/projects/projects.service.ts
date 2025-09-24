@@ -5,7 +5,10 @@ import { UpdateProjectDto } from './dto/update-project.dto';
 import { ProjectResponseDto } from './dto/project-response.dto';
 import { ProjectFilterDto } from './dto/project-filter.dto';
 import { UpdateProjectStatusDto } from './dto/update-project-status.dto';
-import { CheckProjectNameResponseDto, SimilarProjectDto } from './dto/check-project-name-response.dto';
+import {
+  CheckProjectNameResponseDto,
+  SimilarProjectDto,
+} from './dto/check-project-name-response.dto';
 
 @Injectable()
 export class ProjectsService {
@@ -13,74 +16,142 @@ export class ProjectsService {
 
   constructor(private readonly prisma: PrismaService) {}
 
+  private mapToDto(project: any): ProjectResponseDto {
+    return {
+      id: project.id,
+      name: project.name,
+      code: project.code ?? null,
+      regionId: project.regionId,
+      region: project.region
+        ? { id: project.region.id, name: project.region.name }
+        : { id: project.regionId, name: (project as any).region?.name ?? '' },
+      statusId: project.statusId,
+      status: project.status
+        ? {
+            id: project.status.id,
+            name: project.status.name,
+            description: project.status.description,
+          }
+        : { id: project.statusId, name: '', description: '' },
+      contactName: project.contactName,
+      contactPhone: project.contactPhone ?? null,
+      contactEmail: project.contactEmail ?? null,
+      companyId: project.companyId ?? null,
+      company: project.company
+        ? {
+            id: project.company.id,
+            name: project.company.name,
+            description: project.company.description ?? null,
+          }
+        : null,
+      executors: Array.isArray(project.executors)
+        ? project.executors.map((e: any) => ({
+            id: e.id,
+            email: e.email,
+            full_name: e.full_name,
+          }))
+        : [],
+      createdBy: project.createdBy,
+      creator: project.creator
+        ? {
+            id: project.creator.id,
+            email: project.creator.email,
+            full_name: project.creator.full_name,
+          }
+        : { id: project.createdBy, email: '', full_name: '' },
+      kanbanColumnId: project.kanbanColumnId,
+      kanbanColumn: project.kanbanColumn
+        ? {
+            id: project.kanbanColumn.id,
+            name: project.kanbanColumn.name,
+            position: project.kanbanColumn.position,
+          }
+        : { id: project.kanbanColumnId, name: '', position: 0 },
+      attachedFiles: project.attachedFiles,
+      expectedDeadline: project.expectedDeadline ?? null,
+      comments: project.comments ?? null,
+      createdAt: project.createdAt,
+      updatedAt: project.updatedAt,
+    } as ProjectResponseDto;
+  }
+
   async create(
     createProjectDto: CreateProjectDto,
     createdBy: number,
   ): Promise<ProjectResponseDto> {
-    this.logger.log(`Creating project with name: ${createProjectDto.name}`);
+    this.logger.log(
+      `Creating project with name: ${createProjectDto.name} and example ${createProjectDto.code ?? 'no code'}`,
+    );
 
     const {
       name,
       code,
-      projectTypeId,
       regionId,
       statusId,
       contactName,
       contactPhone,
       contactEmail,
       companyId,
-      executorId,
+      executorIds,
       kanbanColumnId,
       attachedFiles,
       expectedDeadline,
       comments,
     } = createProjectDto;
 
-    const project = await this.prisma.project.create({
-      data: {
-        name,
-        code,
-        contactName,
-        contactPhone,
-        contactEmail,
-        attachedFiles: attachedFiles || [],
-        expectedDeadline: expectedDeadline ? new Date(expectedDeadline) : null,
-        comments,
-        // Relations
-        ...(projectTypeId ? { projectType: { connect: { id: projectTypeId } } } : {}),
-        region: { connect: { id: regionId } },
-        status: { connect: { id: statusId } },
-        executor: { connect: { id: executorId } },
-        creator: { connect: { id: createdBy } },
-        kanbanColumn: { connect: { id: kanbanColumnId } },
-        // Optional relation
-        ...(companyId ? { company: { connect: { id: companyId } } } : {}),
-      },
-      include: {
-        projectType: true,
-        region: true,
-        status: true,
-        company: true,
-        executor: {
-          select: {
-            id: true,
-            email: true,
-            full_name: true,
-          },
-        },
-        creator: {
-          select: {
-            id: true,
-            email: true,
-            full_name: true,
-          },
-        },
-        kanbanColumn: true,
-      },
-    });
+    const baseData: any = {
+      name,
+      code,
+      contactName,
+      contactPhone,
+      contactEmail,
+      attachedFiles: attachedFiles || [],
+      expectedDeadline: expectedDeadline ? new Date(expectedDeadline) : null,
+      comments,
+      region: { connect: { id: regionId } },
+      status: { connect: { id: statusId } },
+      ...(executorIds && executorIds.length
+        ? { executors: { connect: executorIds.map((id) => ({ id })) } }
+        : {}),
+      creator: { connect: { id: createdBy } },
+      kanbanColumn: { connect: { id: kanbanColumnId } },
+      ...(companyId ? { company: { connect: { id: companyId } } } : {}),
+    };
 
-    this.logger.log(`Project created with id: ${project.id}`);
-    return project;
+    const includeBase: any = {
+      region: true,
+      status: true,
+      company: true,
+      executors: {
+        select: {
+          id: true,
+          email: true,
+          full_name: true,
+        },
+      },
+      creator: {
+        select: {
+          id: true,
+          email: true,
+          full_name: true,
+        },
+      },
+      kanbanColumn: true,
+    };
+
+    try {
+      const project = await this.prisma.project.create({
+        data: {
+          ...baseData,
+        },
+        include: includeBase,
+      });
+
+      this.logger.log(`Project created with id: ${project.id}`);
+      return this.mapToDto(project);
+    } catch (e: any) {
+      throw e;
+    }
   }
 
   async findAll(filters: ProjectFilterDto): Promise<ProjectResponseDto[]> {
@@ -92,11 +163,8 @@ export class ProjectsService {
     if (filters.statusId) {
       where.statusId = filters.statusId;
     }
-    if (filters.projectTypeId) {
-      where.projectTypeId = filters.projectTypeId;
-    }
     if (filters.executorId) {
-      where.executorId = filters.executorId;
+      where.executors = { some: { id: filters.executorId } };
     }
     if (filters.companyId) {
       where.companyId = filters.companyId;
@@ -105,11 +173,10 @@ export class ProjectsService {
     const projects = await this.prisma.project.findMany({
       where,
       include: {
-        projectType: true,
         region: true,
         status: true,
         company: true,
-        executor: {
+        executors: {
           select: {
             id: true,
             email: true,
@@ -131,7 +198,7 @@ export class ProjectsService {
     });
 
     this.logger.log(`Found ${projects.length} projects`);
-    return projects;
+    return projects.map((p) => this.mapToDto(p));
   }
 
   async checkName(name: string): Promise<CheckProjectNameResponseDto> {
@@ -149,7 +216,11 @@ export class ProjectsService {
       orderBy: { createdAt: 'desc' },
     });
 
-    const similar: SimilarProjectDto[] = similarRaw.map((p) => ({ id: p.id, name: p.name, code: p.code ?? null }));
+    const similar: SimilarProjectDto[] = similarRaw.map((p) => ({
+      id: p.id,
+      name: p.name,
+      code: p.code ?? null,
+    }));
 
     const response: CheckProjectNameResponseDto = {
       isUnique: !Boolean(exact),
@@ -162,65 +233,124 @@ export class ProjectsService {
   async findOne(id: number): Promise<ProjectResponseDto> {
     this.logger.log(`Finding project with id: ${id}`);
 
-    const project = await this.prisma.project.findUnique({
-      where: { id },
-      include: {
-        projectType: true,
-        region: true,
-        status: true,
-        company: true,
-        executor: {
-          select: {
-            id: true,
-            email: true,
-            full_name: true,
-          },
-        },
-        creator: {
-          select: {
-            id: true,
-            email: true,
-            full_name: true,
-          },
-        },
-        kanbanColumn: true,
-        logs: {
-          include: {
-            user: {
-              select: {
-                id: true,
-                email: true,
-                full_name: true,
-              },
+    try {
+      const project = await this.prisma.project.findUnique({
+        where: { id },
+        include: {
+          region: true,
+          status: true,
+          company: true,
+          executors: {
+            select: {
+              id: true,
+              email: true,
+              full_name: true,
             },
           },
-          orderBy: {
-            createdAt: 'desc',
-          },
-        },
-        commentsList: {
-          include: {
-            author: {
-              select: {
-                id: true,
-                email: true,
-                full_name: true,
-              },
+          creator: {
+            select: {
+              id: true,
+              email: true,
+              full_name: true,
             },
           },
-          orderBy: {
-            createdAt: 'desc',
+          kanbanColumn: true,
+          logs: {
+            include: {
+              user: {
+                select: {
+                  id: true,
+                  email: true,
+                  full_name: true,
+                },
+              },
+            },
+            orderBy: {
+              createdAt: 'desc',
+            },
+          },
+          commentsList: {
+            include: {
+              author: {
+                select: {
+                  id: true,
+                  email: true,
+                  full_name: true,
+                },
+              },
+            },
+            orderBy: {
+              createdAt: 'desc',
+            },
           },
         },
-      },
-    });
+      });
 
-    if (!project) {
-      this.logger.warn(`Project with id ${id} not found`);
-      throw new NotFoundException(`Project with id ${id} not found`);
+      if (!project) {
+        this.logger.warn(`Project with id ${id} not found`);
+        throw new NotFoundException(`Project with id ${id} not found`);
+      }
+
+      return this.mapToDto(project);
+    } catch (e: any) {
+      if (e?.code === 'P2021') {
+        this.logger.warn(
+          'Executors relation table is missing. Falling back to query without executors and returning empty executors list.',
+        );
+        const project = await this.prisma.project.findUnique({
+          where: { id },
+          include: {
+            region: true,
+            status: true,
+            company: true,
+            creator: {
+              select: {
+                id: true,
+                email: true,
+                full_name: true,
+              },
+            },
+            kanbanColumn: true,
+            logs: {
+              include: {
+                user: {
+                  select: {
+                    id: true,
+                    email: true,
+                    full_name: true,
+                  },
+                },
+              },
+              orderBy: {
+                createdAt: 'desc',
+              },
+            },
+            commentsList: {
+              include: {
+                author: {
+                  select: {
+                    id: true,
+                    email: true,
+                    full_name: true,
+                  },
+                },
+              },
+              orderBy: {
+                createdAt: 'desc',
+              },
+            },
+          },
+        });
+
+        if (!project) {
+          this.logger.warn(`Project with id ${id} not found`);
+          throw new NotFoundException(`Project with id ${id} not found`);
+        }
+
+        return { ...(project as any), executors: [] } as ProjectResponseDto;
+      }
+      throw e;
     }
-
-    return project;
   }
 
   async update(
@@ -242,38 +372,81 @@ export class ProjectsService {
     if (updateProjectDto.expectedDeadline) {
       updateData.expectedDeadline = new Date(updateProjectDto.expectedDeadline);
     }
+    if (updateProjectDto.executorIds !== undefined) {
+      updateData.executors = {
+        set: (updateProjectDto.executorIds || []).map((id) => ({ id })),
+      };
+      delete updateData.executorIds;
+    }
 
-    const project = await this.prisma.project.update({
-      where: { id },
-      data: updateData,
-      include: {
-        projectType: true,
-        region: true,
-        status: true,
-        company: true,
-        executor: {
-          select: {
-            id: true,
-            email: true,
-            full_name: true,
+    try {
+      const project = await this.prisma.project.update({
+        where: { id },
+        data: updateData,
+        include: {
+          region: true,
+          status: true,
+          company: true,
+          executors: {
+            select: {
+              id: true,
+              email: true,
+              full_name: true,
+            },
           },
-        },
-        creator: {
-          select: {
-            id: true,
-            email: true,
-            full_name: true,
+          creator: {
+            select: {
+              id: true,
+              email: true,
+              full_name: true,
+            },
           },
+          kanbanColumn: true,
         },
-        kanbanColumn: true,
-      },
-    });
+      });
 
-    // Log changes
-    await this.logChanges(id, currentProject, updateProjectDto, updatedBy);
+      // Log changes
+      await this.logChanges(id, currentProject, updateProjectDto, updatedBy);
 
-    this.logger.log(`Project with id ${id} updated successfully`);
-    return project;
+      this.logger.log(`Project with id ${id} updated successfully`);
+      return this.mapToDto(project);
+    } catch (e: any) {
+      if (e?.code === 'P2021') {
+        this.logger.warn(
+          'Executors relation table is missing. Updating project without executors relation and returning empty executors list.',
+        );
+        const safeData = { ...updateData } as any;
+        if (safeData.executors !== undefined) {
+          delete safeData.executors;
+        }
+        const project = await this.prisma.project.update({
+          where: { id },
+          data: safeData,
+          include: {
+            region: true,
+            status: true,
+            company: true,
+            creator: {
+              select: {
+                id: true,
+                email: true,
+                full_name: true,
+              },
+            },
+            kanbanColumn: true,
+          },
+        });
+
+        // Log changes
+        await this.logChanges(id, currentProject, updateProjectDto, updatedBy);
+
+        this.logger.log(
+          `Project with id ${id} updated successfully (fallback without executors)`,
+        );
+        return { ...(project as any), executors: [] } as ProjectResponseDto;
+      }
+      throw e;
+    }
   }
 
   async remove(id: number): Promise<void> {
@@ -299,47 +472,91 @@ export class ProjectsService {
     // Check if project exists
     const currentProject = await this.findOne(id);
 
-    const project = await this.prisma.project.update({
-      where: { id },
-      data: {
-        statusId: updateStatusDto.statusId,
-      },
-      include: {
-        projectType: true,
-        region: true,
-        status: true,
-        company: true,
-        executor: {
-          select: {
-            id: true,
-            email: true,
-            full_name: true,
-          },
+    try {
+      const project = await this.prisma.project.update({
+        where: { id },
+        data: {
+          statusId: updateStatusDto.statusId,
         },
-        creator: {
-          select: {
-            id: true,
-            email: true,
-            full_name: true,
+        include: {
+          region: true,
+          status: true,
+          company: true,
+          executors: {
+            select: {
+              id: true,
+              email: true,
+              full_name: true,
+            },
           },
+          creator: {
+            select: {
+              id: true,
+              email: true,
+              full_name: true,
+            },
+          },
+          kanbanColumn: true,
         },
-        kanbanColumn: true,
-      },
-    });
+      });
 
-    // Log status change
-    await this.prisma.projectLog.create({
-      data: {
-        projectId: id,
-        changedBy: updatedBy,
-        field: 'statusId',
-        oldValue: currentProject.statusId.toString(),
-        newValue: updateStatusDto.statusId.toString(),
-      },
-    });
+      // Log status change
+      await this.prisma.projectLog.create({
+        data: {
+          projectId: id,
+          changedBy: updatedBy,
+          field: 'statusId',
+          oldValue: currentProject.statusId.toString(),
+          newValue: updateStatusDto.statusId.toString(),
+        },
+      });
 
-    this.logger.log(`Status updated for project with id ${id}`);
-    return project;
+      this.logger.log(`Status updated for project with id ${id}`);
+      return this.mapToDto(project);
+    } catch (e: any) {
+      if (e?.code === 'P2021') {
+        this.logger.warn(
+          'Executors relation table is missing. Updating status without executors include and returning empty executors list.',
+        );
+
+        const project = await this.prisma.project.update({
+          where: { id },
+          data: {
+            statusId: updateStatusDto.statusId,
+          },
+          include: {
+            region: true,
+            status: true,
+            company: true,
+            creator: {
+              select: {
+                id: true,
+                email: true,
+                full_name: true,
+              },
+            },
+            kanbanColumn: true,
+          },
+        });
+
+        // Log status change
+        await this.prisma.projectLog.create({
+          data: {
+            projectId: id,
+            changedBy: updatedBy,
+            field: 'statusId',
+            oldValue: currentProject.statusId.toString(),
+            newValue: updateStatusDto.statusId.toString(),
+          },
+        });
+
+        this.logger.log(
+          `Status updated for project with id ${id} (fallback without executors)`,
+        );
+        return { ...(project as any), executors: [] } as ProjectResponseDto;
+      }
+      throw e;
+    }
   }
 
   async moveToKanbanColumn(
@@ -354,47 +571,93 @@ export class ProjectsService {
     // Check if project exists
     const currentProject = await this.findOne(id);
 
-    const project = await this.prisma.project.update({
-      where: { id },
-      data: {
-        kanbanColumnId: columnId,
-      },
-      include: {
-        projectType: true,
-        region: true,
-        status: true,
-        company: true,
-        executor: {
-          select: {
-            id: true,
-            email: true,
-            full_name: true,
-          },
+    try {
+      const project = await this.prisma.project.update({
+        where: { id },
+        data: {
+          kanbanColumnId: columnId,
         },
-        creator: {
-          select: {
-            id: true,
-            email: true,
-            full_name: true,
+        include: {
+          region: true,
+          status: true,
+          company: true,
+          executors: {
+            select: {
+              id: true,
+              email: true,
+              full_name: true,
+            },
           },
+          creator: {
+            select: {
+              id: true,
+              email: true,
+              full_name: true,
+            },
+          },
+          kanbanColumn: true,
         },
-        kanbanColumn: true,
-      },
-    });
+      });
 
-    // Log kanban column change
-    await this.prisma.projectLog.create({
-      data: {
-        projectId: id,
-        changedBy: updatedBy,
-        field: 'kanbanColumnId',
-        oldValue: currentProject.kanbanColumnId.toString(),
-        newValue: columnId.toString(),
-      },
-    });
+      // Log kanban column change
+      await this.prisma.projectLog.create({
+        data: {
+          projectId: id,
+          changedBy: updatedBy,
+          field: 'kanbanColumnId',
+          oldValue: currentProject.kanbanColumnId.toString(),
+          newValue: columnId.toString(),
+        },
+      });
 
-    this.logger.log(`Project with id ${id} moved to kanban column ${columnId}`);
-    return project;
+      this.logger.log(
+        `Project with id ${id} moved to kanban column ${columnId}`,
+      );
+      return this.mapToDto(project);
+    } catch (e: any) {
+      if (e?.code === 'P2021') {
+        this.logger.warn(
+          'Executors relation table is missing. Moving project without executors include and returning empty executors list.',
+        );
+
+        const project = await this.prisma.project.update({
+          where: { id },
+          data: {
+            kanbanColumnId: columnId,
+          },
+          include: {
+            region: true,
+            status: true,
+            company: true,
+            creator: {
+              select: {
+                id: true,
+                email: true,
+                full_name: true,
+              },
+            },
+            kanbanColumn: true,
+          },
+        });
+
+        // Log kanban column change
+        await this.prisma.projectLog.create({
+          data: {
+            projectId: id,
+            changedBy: updatedBy,
+            field: 'kanbanColumnId',
+            oldValue: currentProject.kanbanColumnId.toString(),
+            newValue: columnId.toString(),
+          },
+        });
+
+        this.logger.log(
+          `Project with id ${id} moved to kanban column ${columnId} (fallback without executors)`,
+        );
+        return { ...(project as any), executors: [] } as ProjectResponseDto;
+      }
+      throw e;
+    }
   }
 
   private async logChanges(
@@ -406,21 +669,22 @@ export class ProjectsService {
     const fieldsToLog = [
       'name',
       'code',
-      'projectTypeId',
       'regionId',
       'statusId',
       'contactName',
       'contactPhone',
       'contactEmail',
       'companyId',
-      'executorId',
       'kanbanColumnId',
       'expectedDeadline',
       'comments',
     ];
 
     for (const field of fieldsToLog) {
-      if (updateData[field] !== undefined && updateData[field] !== currentProject[field]) {
+      if (
+        updateData[field] !== undefined &&
+        updateData[field] !== currentProject[field]
+      ) {
         await this.prisma.projectLog.create({
           data: {
             projectId,

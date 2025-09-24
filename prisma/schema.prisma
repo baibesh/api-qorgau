@@ -36,12 +36,6 @@ model ProjectStatus {
   Project     Project[]
 }
 
-model ProjectType {
-  id          Int       @id @default(autoincrement())
-  name        String
-  description String
-  Project     Project[]
-}
 
 model Role {
   id                      Int                      @id @default(autoincrement())
@@ -117,7 +111,7 @@ model User {
   assignedUserRoles      UserRole[]       @relation("UserRoleAssignedBy")
   grantedRolePermissions RolePermission[] @relation("RolePermissionGrantedBy")
 
-  executedProjects Project[]        @relation("ProjectExecutor")
+  executedProjects Project[]        @relation("ProjectExecutors")
   createdProjects  Project[]        @relation("ProjectCreatedBy")
   projectLogs      ProjectLog[]
   projectComments  ProjectComment[]
@@ -209,9 +203,6 @@ model Project {
   name String
   code String?
 
-  projectTypeId Int?
-  projectType   ProjectType? @relation(fields: [projectTypeId], references: [id])
-
   regionId Int
   region   Region @relation(fields: [regionId], references: [id])
 
@@ -225,8 +216,7 @@ model Project {
   companyId Int?
   company   Company? @relation(fields: [companyId], references: [id])
 
-  executorId Int
-  executor   User @relation("ProjectExecutor", fields: [executorId], references: [id])
+  executors User[] @relation("ProjectExecutors")
 
   createdBy Int
   creator   User @relation("ProjectCreatedBy", fields: [createdBy], references: [id])

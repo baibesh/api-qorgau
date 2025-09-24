@@ -21,26 +21,6 @@ export class ProjectResponseDto {
   code: string | null;
 
   @ApiProperty({
-    description: 'Project type ID',
-    example: 1,
-    nullable: true,
-    required: false,
-  })
-  projectTypeId: number | null;
-
-  @ApiProperty({
-    description: 'Project type information',
-    nullable: true,
-    required: false,
-    type: Object,
-  })
-  projectType: {
-    id: number;
-    name: string;
-    description: string;
-  } | null;
-
-  @ApiProperty({
     description: 'Region ID',
     example: 1,
   })
@@ -114,7 +94,11 @@ export class ProjectResponseDto {
     properties: {
       id: { type: 'number', example: 1 },
       name: { type: 'string', example: 'Tech Corp' },
-      description: { type: 'string', example: 'Technology company', nullable: true },
+      description: {
+        type: 'string',
+        example: 'Technology company',
+        nullable: true,
+      },
     },
   })
   company: {
@@ -124,25 +108,22 @@ export class ProjectResponseDto {
   } | null;
 
   @ApiProperty({
-    description: 'Executor user ID',
-    example: 1,
-  })
-  executorId: number;
-
-  @ApiProperty({
-    description: 'Executor information',
-    type: 'object',
-    properties: {
-      id: { type: 'number', example: 1 },
-      email: { type: 'string', example: 'executor@example.com' },
-      full_name: { type: 'string', example: 'Jane Smith' },
+    description: 'Executors information',
+    type: 'array',
+    items: {
+      type: 'object',
+      properties: {
+        id: { type: 'number', example: 1 },
+        email: { type: 'string', example: 'executor@example.com' },
+        full_name: { type: 'string', example: 'Jane Smith' },
+      },
     },
   })
-  executor: {
+  executors: Array<{
     id: number;
     email: string;
     full_name: string;
-  };
+  }>;
 
   @ApiProperty({
     description: 'Creator user ID',

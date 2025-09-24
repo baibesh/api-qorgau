@@ -23,15 +23,6 @@ export class ProjectFilterDto {
   @Type(() => Number)
   statusId?: number;
 
-  @ApiProperty({
-    description: 'Filter by project type ID',
-    example: 1,
-    required: false,
-  })
-  @IsOptional()
-  @IsInt()
-  @Type(() => Number)
-  projectTypeId?: number;
 
   @ApiProperty({
     description: 'Filter by executor user ID',
