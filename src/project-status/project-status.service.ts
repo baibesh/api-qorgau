@@ -105,10 +105,23 @@ export class ProjectStatusService {
     // Check if project status exists
     await this.findOne(id);
 
+    // Check how many projects are using this status
+    const projectCount = await this.prisma.project.count({
+      where: { statusId: id },
+    });
+
+    if (projectCount > 0) {
+      this.logger.log(
+        `Found ${projectCount} projects using status ${id}. They will have their status set to null.`,
+      );
+    }
+
     await this.prisma.projectStatus.delete({
       where: { id },
     });
 
-    this.logger.log(`Project status with id ${id} removed successfully`);
+    this.logger.log(
+      `Project status with id ${id} removed successfully. ${projectCount} projects updated.`,
+    );
   }
 }

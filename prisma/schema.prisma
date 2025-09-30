@@ -206,8 +206,8 @@ model Project {
   regionId Int
   region   Region @relation(fields: [regionId], references: [id])
 
-  statusId Int
-  status   ProjectStatus @relation(fields: [statusId], references: [id])
+  statusId Int?
+  status   ProjectStatus? @relation(fields: [statusId], references: [id], onDelete: SetNull)
 
   contactName  String
   contactPhone String?

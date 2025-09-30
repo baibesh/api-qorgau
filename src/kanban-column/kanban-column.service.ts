@@ -4,6 +4,7 @@ import {
   NotFoundException,
   ForbiddenException,
   BadRequestException,
+  ConflictException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateKanbanColumnDto } from './dto/create-kanban-column.dto';
@@ -157,5 +158,54 @@ export class KanbanColumnService {
     });
 
     return updated as unknown as KanbanColumnResponseDto[];
+  }
+
+  async remove(
+    id: number,
+    user: { userId: number; isAdmin: boolean },
+  ): Promise<void> {
+    this.logger.log(`Attempting to delete kanban column id: ${id}`);
+
+    // Check if column exists
+    const column = await this.prisma.kanbanColumn.findUnique({
+      where: { id },
+      include: { board: true, _count: { select: { projects: true } } },
+    });
+
+    if (!column) {
+      this.logger.warn(`Kanban column with id ${id} not found`);
+      throw new NotFoundException(`Kanban column with id ${id} not found`);
+    }
+
+    // Check if user has access to the board
+    if (!user.isAdmin) {
+      const membership = await this.prisma.kanbanBoardMember.findFirst({
+        where: { boardId: column.boardId, userId: user.userId },
+        select: { id: true },
+      });
+      if (!membership) {
+        this.logger.warn(
+          `User ${user.userId} has no access to board ${column.boardId} for column deletion`,
+        );
+        throw new ForbiddenException('Access denied to this board');
+      }
+    }
+
+    // Check if column has projects
+    if (column._count.projects > 0) {
+      this.logger.warn(
+        `Cannot delete column ${id} - it contains ${column._count.projects} project(s)`,
+      );
+      throw new ConflictException(
+        'Cannot delete column that contains projects. Move or delete projects first.',
+      );
+    }
+
+    // Delete the column
+    await this.prisma.kanbanColumn.delete({
+      where: { id },
+    });
+
+    this.logger.log(`Kanban column ${id} deleted successfully`);
   }
 }

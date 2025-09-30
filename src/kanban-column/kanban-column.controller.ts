@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   ParseIntPipe,
@@ -92,5 +93,26 @@ export class KanbanColumnController {
     @Param('boardId', ParseIntPipe) boardId: number,
   ): Promise<KanbanColumnResponseDto[]> {
     return this.kanbanColumnService.findByBoard(boardId);
+  }
+
+  @Delete(':id')
+  @ApiOperation({ summary: 'Delete a kanban column by ID' })
+  @ApiParam({ name: 'id', type: Number, description: 'Column ID' })
+  @ApiResponse({ status: 200, description: 'Column deleted successfully' })
+  @ApiResponse({ status: 404, description: 'Kanban column not found' })
+  @ApiResponse({
+    status: 403,
+    description: 'Access denied to this board',
+  })
+  @ApiResponse({
+    status: 409,
+    description: 'Cannot delete column that contains projects',
+  })
+  async remove(
+    @Param('id', ParseIntPipe) id: number,
+    @Req() req: any,
+  ): Promise<{ message: string }> {
+    await this.kanbanColumnService.remove(id, req.user);
+    return { message: 'Column deleted successfully' };
   }
 }
