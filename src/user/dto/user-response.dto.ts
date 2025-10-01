@@ -51,6 +51,9 @@ export class UserResponseDto {
   @ApiProperty({ description: 'User roles', type: [UserRoleResponseDto] })
   roles: UserRoleResponseDto[];
 
+  @ApiProperty({ description: 'Avatar URL', example: 'storage/avatars/abc123.jpg', required: false })
+  avatar?: string;
+
   @ApiProperty({ description: 'Last updated date', example: '2023-01-01T00:00:00.000Z' })
   updatedAt: Date;
 }

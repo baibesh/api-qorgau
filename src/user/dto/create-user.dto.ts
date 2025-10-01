@@ -64,6 +64,10 @@ export class CreateUserDto {
   })
   @IsOptional()
   @IsInt()
+  @Transform(({ value }) => {
+    if (value === undefined || value === null || value === '') return undefined;
+    return Number(value);
+  })
   region_id?: number;
 
   @ApiProperty({
@@ -73,6 +77,12 @@ export class CreateUserDto {
   })
   @IsOptional()
   @IsBoolean()
+  @Transform(({ value }) => {
+    if (value === undefined || value === null || value === '') return undefined;
+    if (value === 'true' || value === true) return true;
+    if (value === 'false' || value === false) return false;
+    return Boolean(value);
+  })
   isAdmin?: boolean;
 
   @ApiProperty({

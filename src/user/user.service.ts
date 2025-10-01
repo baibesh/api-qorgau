@@ -4,6 +4,9 @@ import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { UserStatus } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
+import { createReadStream, existsSync } from 'fs';
+import { join } from 'path';
+import type { Response } from 'express';
 
 export interface UserFilters {
   status?: UserStatus;
@@ -17,7 +20,7 @@ export class UserService {
   private readonly logger = new Logger(UserService.name);
   constructor(private prisma: PrismaService) {}
 
-  async create(createUserDto: CreateUserDto) {
+  async create(createUserDto: CreateUserDto, avatar?: Express.Multer.File) {
     // Check if user with this email already exists
     const existingUser = await this.prisma.user.findUnique({
       where: { email: createUserDto.email },
@@ -54,6 +57,17 @@ export class UserService {
         },
       },
     });
+
+    // Create profile with avatar if provided
+    if (avatar) {
+      await this.prisma.userProfile.create({
+        data: {
+          userId: user.id,
+          avatar: avatar.path,
+        },
+      });
+      this.logger.log(`Avatar saved for user ${user.id}: ${avatar.path}`);
+    }
 
     return this.formatUserResponse(user);
   }
@@ -93,6 +107,11 @@ export class UserService {
             role: true,
           },
         },
+        profile: {
+          select: {
+            avatar: true,
+          },
+        },
       },
       orderBy: {
         registered_at: 'desc',
@@ -113,6 +132,11 @@ export class UserService {
         userRoles: {
           include: {
             role: true,
+          },
+        },
+        profile: {
+          select: {
+            avatar: true,
           },
         },
       },
@@ -188,6 +212,11 @@ export class UserService {
       include: {
         region: true,
         userRoles: { include: { role: true } },
+        profile: {
+          select: {
+            avatar: true,
+          },
+        },
       },
     });
 
@@ -214,6 +243,66 @@ export class UserService {
     });
 
     return { message: 'User successfully deleted' };
+  }
+
+  async getAvatar(userId: number, res: Response) {
+    this.logger.log(`Fetching avatar for user ${userId}`);
+    const user = await this.prisma.user.findFirst({
+      where: { id: userId, isDeleted: false },
+      include: {
+        profile: {
+          select: {
+            avatar: true,
+          },
+        },
+      },
+    });
+
+    if (!user) {
+      throw new NotFoundException(`User with ID ${userId} not found`);
+    }
+
+    if (!user.profile?.avatar) {
+      // Return default avatar (1x1 transparent PNG)
+      const defaultAvatar = Buffer.from(
+        'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
+        'base64',
+      );
+      res.setHeader('Content-Type', 'image/png');
+      res.setHeader('Cache-Control', 'public, max-age=86400'); // Cache for 1 day
+      return res.send(defaultAvatar);
+    }
+
+    const avatarPath = join(process.cwd(), user.profile.avatar);
+    if (!existsSync(avatarPath)) {
+      this.logger.warn(`Avatar file missing on disk: ${avatarPath}`);
+      // Return default avatar instead of error
+      const defaultAvatar = Buffer.from(
+        'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
+        'base64',
+      );
+      res.setHeader('Content-Type', 'image/png');
+      res.setHeader('Cache-Control', 'public, max-age=86400');
+      return res.send(defaultAvatar);
+    }
+
+    const stream = createReadStream(avatarPath);
+
+    // Determine mime type based on extension
+    const ext = user.profile.avatar.split('.').pop()?.toLowerCase();
+    const mimeTypes: Record<string, string> = {
+      jpg: 'image/jpeg',
+      jpeg: 'image/jpeg',
+      png: 'image/png',
+      gif: 'image/gif',
+      webp: 'image/webp',
+    };
+    const mimeType = mimeTypes[ext || ''] || 'application/octet-stream';
+
+    res.setHeader('Content-Type', mimeType);
+    res.setHeader('Cache-Control', 'public, max-age=31536000'); // Cache for 1 year
+
+    stream.pipe(res);
   }
 
   async getProfile(userId: number) {
@@ -298,7 +387,7 @@ export class UserService {
   }
 
   private formatUserResponse(user: any) {
-    const { password_hash, refreshToken, isDeleted, ...userWithoutSensitiveData } = user;
+    const { password_hash, refreshToken, isDeleted, profile, ...userWithoutSensitiveData } = user;
 
     return {
       ...userWithoutSensitiveData,
@@ -307,6 +396,7 @@ export class UserService {
         name: userRole.role.name,
         description: userRole.role.description,
       })) || [],
+      avatar: profile?.avatar || null,
     };
   }
 }

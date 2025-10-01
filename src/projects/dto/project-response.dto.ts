@@ -138,12 +138,14 @@ export class ProjectResponseDto {
       id: { type: 'number', example: 1 },
       email: { type: 'string', example: 'creator@example.com' },
       full_name: { type: 'string', example: 'Admin User' },
+      avatar: { type: 'string', example: 'storage/avatars/abc123.jpg', nullable: true },
     },
   })
   creator: {
     id: number;
     email: string;
     full_name: string;
+    avatar?: string | null;
   };
 
   @ApiProperty({

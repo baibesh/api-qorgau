@@ -127,6 +127,11 @@ export class AuthService {
         status: true,
         registered_at: true,
         last_login: true,
+        profile: {
+          select: {
+            avatar: true,
+          },
+        },
       },
     });
 
@@ -134,7 +139,11 @@ export class AuthService {
       throw new UnauthorizedException('User not found');
     }
 
-    return user;
+    const { profile, ...userData } = user;
+    return {
+      ...userData,
+      avatar: profile?.avatar || null,
+    };
   }
 
   async getUserPermissions(

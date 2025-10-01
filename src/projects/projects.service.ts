@@ -57,8 +57,9 @@ export class ProjectsService {
             id: project.creator.id,
             email: project.creator.email,
             full_name: project.creator.full_name,
+            avatar: project.creator.profile?.avatar || null,
           }
-        : { id: project.createdBy, email: '', full_name: '' },
+        : { id: project.createdBy, email: '', full_name: '', avatar: null },
       kanbanColumnId: project.kanbanColumnId,
       kanbanColumn: project.kanbanColumn
         ? {
@@ -134,6 +135,11 @@ export class ProjectsService {
           id: true,
           email: true,
           full_name: true,
+          profile: {
+            select: {
+              avatar: true,
+            },
+          },
         },
       },
       kanbanColumn: true,
@@ -252,6 +258,11 @@ export class ProjectsService {
               id: true,
               email: true,
               full_name: true,
+              profile: {
+                select: {
+                  avatar: true,
+                },
+              },
             },
           },
           kanbanColumn: true,
@@ -308,6 +319,11 @@ export class ProjectsService {
                 id: true,
                 email: true,
                 full_name: true,
+                profile: {
+                  select: {
+                    avatar: true,
+                  },
+                },
               },
             },
             kanbanColumn: true,

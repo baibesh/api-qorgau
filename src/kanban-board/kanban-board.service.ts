@@ -55,12 +55,30 @@ export class KanbanBoardService {
           status: true,
           company: true,
           executors: { select: { id: true, email: true, full_name: true } },
-          creator: { select: { id: true, email: true, full_name: true } },
+          creator: {
+            select: {
+              id: true,
+              email: true,
+              full_name: true,
+              profile: {
+                select: {
+                  avatar: true,
+                },
+              },
+            }
+          },
           kanbanColumn: true,
         },
         orderBy: { createdAt: 'desc' },
       });
-      return projects as unknown as ProjectResponseDto[];
+      return projects.map(p => ({
+        ...p,
+        creator: {
+          ...p.creator,
+          avatar: p.creator.profile?.avatar || null,
+          profile: undefined,
+        },
+      })) as unknown as ProjectResponseDto[];
     } catch (e: any) {
       if (e?.code === 'P2021') {
         this.logger.warn(
@@ -75,12 +93,31 @@ export class KanbanBoardService {
             region: true,
             status: true,
             company: true,
-            creator: { select: { id: true, email: true, full_name: true } },
+            creator: {
+              select: {
+                id: true,
+                email: true,
+                full_name: true,
+                profile: {
+                  select: {
+                    avatar: true,
+                  },
+                },
+              }
+            },
             kanbanColumn: true,
           },
           orderBy: { createdAt: 'desc' },
         });
-        return (projects as any[]).map((p) => ({ ...p, executors: [] }));
+        return (projects as any[]).map((p) => ({
+          ...p,
+          executors: [],
+          creator: {
+            ...p.creator,
+            avatar: p.creator.profile?.avatar || null,
+            profile: undefined,
+          },
+        }));
       }
       throw e;
     }
