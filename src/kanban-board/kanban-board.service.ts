@@ -65,13 +65,13 @@ export class KanbanBoardService {
                   avatar: true,
                 },
               },
-            }
+            },
           },
           kanbanColumn: true,
         },
         orderBy: { createdAt: 'desc' },
       });
-      return projects.map(p => ({
+      return projects.map((p) => ({
         ...p,
         creator: {
           ...p.creator,
@@ -103,7 +103,7 @@ export class KanbanBoardService {
                     avatar: true,
                   },
                 },
-              }
+              },
             },
             kanbanColumn: true,
           },

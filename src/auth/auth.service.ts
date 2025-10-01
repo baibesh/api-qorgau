@@ -35,7 +35,9 @@ export class AuthService {
     const payload = { email: user.email, sub: user.id };
     const accessToken = this.jwtService.sign(payload);
     const refreshToken = this.jwtService.sign(payload, {
-      secret: this.configService.get<string>('JWT_REFRESH_SECRET') || 'refresh-secret',
+      secret:
+        this.configService.get<string>('JWT_REFRESH_SECRET') ||
+        'refresh-secret',
       expiresIn: '7d',
     });
 
@@ -43,7 +45,7 @@ export class AuthService {
     const hashedRefreshToken = await bcrypt.hash(refreshToken, 10);
     await this.prisma.user.update({
       where: { id: user.id },
-      data: { 
+      data: {
         refreshToken: hashedRefreshToken,
         last_login: new Date(),
       },
@@ -66,7 +68,9 @@ export class AuthService {
   async refresh(refreshToken: string) {
     try {
       const payload = this.jwtService.verify(refreshToken, {
-        secret: this.configService.get<string>('JWT_REFRESH_SECRET') || 'refresh-secret',
+        secret:
+          this.configService.get<string>('JWT_REFRESH_SECRET') ||
+          'refresh-secret',
       });
 
       const user = await this.prisma.user.findUnique({
@@ -77,7 +81,10 @@ export class AuthService {
         throw new UnauthorizedException('Invalid refresh token');
       }
 
-      const isRefreshTokenValid = await bcrypt.compare(refreshToken, user.refreshToken);
+      const isRefreshTokenValid = await bcrypt.compare(
+        refreshToken,
+        user.refreshToken,
+      );
       if (!isRefreshTokenValid) {
         throw new UnauthorizedException('Invalid refresh token');
       }
@@ -85,7 +92,9 @@ export class AuthService {
       const newPayload = { email: user.email, sub: user.id };
       const newAccessToken = this.jwtService.sign(newPayload);
       const newRefreshToken = this.jwtService.sign(newPayload, {
-        secret: this.configService.get<string>('JWT_REFRESH_SECRET') || 'refresh-secret',
+        secret:
+          this.configService.get<string>('JWT_REFRESH_SECRET') ||
+          'refresh-secret',
         expiresIn: '7d',
       });
 

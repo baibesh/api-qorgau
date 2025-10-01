@@ -138,7 +138,11 @@ export class ProjectResponseDto {
       id: { type: 'number', example: 1 },
       email: { type: 'string', example: 'creator@example.com' },
       full_name: { type: 'string', example: 'Admin User' },
-      avatar: { type: 'string', example: 'storage/avatars/abc123.jpg', nullable: true },
+      avatar: {
+        type: 'string',
+        example: 'storage/avatars/abc123.jpg',
+        nullable: true,
+      },
     },
   })
   creator: {

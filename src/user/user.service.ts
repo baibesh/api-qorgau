@@ -1,4 +1,9 @@
-import { Injectable, NotFoundException, ConflictException, Logger } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ConflictException,
+  Logger,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
@@ -118,7 +123,7 @@ export class UserService {
       },
     });
 
-    return users.map(user => this.formatUserResponse(user));
+    return users.map((user) => this.formatUserResponse(user));
   }
 
   async findOne(id: number) {
@@ -191,18 +196,30 @@ export class UserService {
       const desiredRoleIds = new Set(roleIds);
 
       const toDelete: number[] = [];
-      currentRoleIds.forEach((rid) => { if (!desiredRoleIds.has(rid)) toDelete.push(rid); });
+      currentRoleIds.forEach((rid) => {
+        if (!desiredRoleIds.has(rid)) toDelete.push(rid);
+      });
 
       const toCreate: number[] = [];
-      desiredRoleIds.forEach((rid) => { if (!currentRoleIds.has(rid)) toCreate.push(rid); });
+      desiredRoleIds.forEach((rid) => {
+        if (!currentRoleIds.has(rid)) toCreate.push(rid);
+      });
 
       await this.prisma.$transaction([
-        ...(toDelete.length ? [
-          this.prisma.userRole.deleteMany({ where: { userId: id, roleId: { in: toDelete } } }),
-        ] : []),
-        ...(toCreate.length ? [
-          this.prisma.userRole.createMany({ data: toCreate.map((roleId) => ({ userId: id, roleId })) }),
-        ] : []),
+        ...(toDelete.length
+          ? [
+              this.prisma.userRole.deleteMany({
+                where: { userId: id, roleId: { in: toDelete } },
+              }),
+            ]
+          : []),
+        ...(toCreate.length
+          ? [
+              this.prisma.userRole.createMany({
+                data: toCreate.map((roleId) => ({ userId: id, roleId })),
+              }),
+            ]
+          : []),
       ]);
     }
 
@@ -307,20 +324,34 @@ export class UserService {
 
   async getProfile(userId: number) {
     this.logger.log(`Fetching profile for user ${userId}`);
-    const user = await this.prisma.user.findFirst({ where: { id: userId, isDeleted: false } });
+    const user = await this.prisma.user.findFirst({
+      where: { id: userId, isDeleted: false },
+    });
     if (!user) {
       throw new NotFoundException(`User with ID ${userId} not found`);
     }
-    const profile = await this.prisma.userProfile.findUnique({ where: { userId } });
+    const profile = await this.prisma.userProfile.findUnique({
+      where: { userId },
+    });
     if (!profile) {
       throw new NotFoundException(`Profile for user ${userId} not found`);
     }
     return profile;
   }
 
-  async updateProfile(userId: number, data: Partial<{ companyId?: number; position?: string; avatar?: string; address?: string }>) {
+  async updateProfile(
+    userId: number,
+    data: Partial<{
+      companyId?: number;
+      position?: string;
+      avatar?: string;
+      address?: string;
+    }>,
+  ) {
     this.logger.log(`Updating profile for user ${userId}`);
-    const user = await this.prisma.user.findFirst({ where: { id: userId, isDeleted: false } });
+    const user = await this.prisma.user.findFirst({
+      where: { id: userId, isDeleted: false },
+    });
     if (!user) {
       throw new NotFoundException(`User with ID ${userId} not found`);
     }
@@ -387,15 +418,22 @@ export class UserService {
   }
 
   private formatUserResponse(user: any) {
-    const { password_hash, refreshToken, isDeleted, profile, ...userWithoutSensitiveData } = user;
+    const {
+      password_hash,
+      refreshToken,
+      isDeleted,
+      profile,
+      ...userWithoutSensitiveData
+    } = user;
 
     return {
       ...userWithoutSensitiveData,
-      roles: user.userRoles?.map(userRole => ({
-        id: userRole.role.id,
-        name: userRole.role.name,
-        description: userRole.role.description,
-      })) || [],
+      roles:
+        user.userRoles?.map((userRole) => ({
+          id: userRole.role.id,
+          name: userRole.role.name,
+          description: userRole.role.description,
+        })) || [],
       avatar: profile?.avatar || null,
     };
   }

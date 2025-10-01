@@ -111,5 +111,4 @@ export class CreateUserDto {
     return undefined;
   })
   roleIds?: number[];
-
 }
