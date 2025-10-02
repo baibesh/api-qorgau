@@ -154,7 +154,7 @@ export class UserService {
     return this.formatUserResponse(user);
   }
 
-  async update(id: number, updateUserDto: UpdateUserDto) {
+  async update(id: number, updateUserDto: UpdateUserDto, avatar?: Express.Multer.File) {
     // Check if user exists and is not deleted
     const existingUser = await this.prisma.user.findFirst({
       where: {
@@ -223,6 +223,21 @@ export class UserService {
       ]);
     }
 
+    // Update avatar if provided
+    if (avatar) {
+      await this.prisma.userProfile.upsert({
+        where: { userId: id },
+        update: {
+          avatar: avatar.path,
+        },
+        create: {
+          userId: id,
+          avatar: avatar.path,
+        },
+      });
+      this.logger.log(`Avatar updated for user ${id}: ${avatar.path}`);
+    }
+
     // Return user with relations
     const user = await this.prisma.user.findUnique({
       where: { id },
@@ -238,6 +253,44 @@ export class UserService {
     });
 
     return this.formatUserResponse(user);
+  }
+
+  async resetPassword(id: number) {
+    // Check if user exists and is not deleted
+    const existingUser = await this.prisma.user.findFirst({
+      where: {
+        id,
+        isDeleted: false,
+      },
+    });
+
+    if (!existingUser) {
+      throw new NotFoundException(`User with ID ${id} not found`);
+    }
+
+    // Generate new password (12 characters: letters and numbers)
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    let newPassword = '';
+    for (let i = 0; i < 12; i++) {
+      newPassword += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+
+    // Hash the new password
+    const saltRounds = 10;
+    const password_hash = await bcrypt.hash(newPassword, saltRounds);
+
+    // Update user password
+    await this.prisma.user.update({
+      where: { id },
+      data: { password_hash },
+    });
+
+    this.logger.log(`Password reset for user ${id}`);
+
+    return {
+      message: 'Password successfully reset',
+      newPassword,
+    };
   }
 
   async remove(id: number) {

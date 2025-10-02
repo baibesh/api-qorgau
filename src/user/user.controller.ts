@@ -221,6 +221,25 @@ export class UserController {
 
   @Patch(':id')
   @ApiOperation({ summary: 'Update user by ID' })
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        email: { type: 'string', format: 'email', example: 'user@example.com' },
+        full_name: { type: 'string', example: 'John Doe' },
+        phone: { type: 'string', example: '+77771234567' },
+        status: {
+          type: 'string',
+          enum: ['ACTIVE', 'INACTIVE', 'SUSPENDED', 'PENDING'],
+        },
+        region_id: { type: 'number', example: 1 },
+        isAdmin: { type: 'boolean', example: false },
+        role_ids: { type: 'array', items: { type: 'number' }, example: [1, 2] },
+        avatar: { type: 'string', format: 'binary' },
+      },
+    },
+  })
   @ApiResponse({
     status: 200,
     description: 'User successfully updated',
@@ -231,11 +250,40 @@ export class UserController {
     status: 409,
     description: 'User with this email already exists',
   })
+  @UseInterceptors(
+    FileInterceptor('avatar', {
+      storage: diskStorage({
+        destination: (req, file, cb) => {
+          const uploadDir = join('storage', 'avatars');
+          const absolute = join(process.cwd(), uploadDir);
+          if (!existsSync(absolute)) {
+            mkdirSync(absolute, { recursive: true });
+          }
+          cb(null, uploadDir);
+        },
+        filename: (req, file, cb) => {
+          const unique = randomUUID();
+          const ext = extname(file.originalname);
+          cb(null, `${unique}${ext}`);
+        },
+      }),
+      fileFilter: (req, file, cb) => {
+        if (!file.mimetype.match(/\/(jpg|jpeg|png|gif|webp)$/)) {
+          return cb(new Error('Only image files are allowed'), false);
+        }
+        cb(null, true);
+      },
+      limits: {
+        fileSize: 10 * 1024 * 1024, // 10MB
+      },
+    }),
+  )
   update(
     @Param('id', ParseIntPipe) id: number,
     @Body() updateUserDto: UpdateUserDto,
+    @UploadedFile() avatar?: Express.Multer.File,
   ) {
-    return this.userService.update(id, updateUserDto);
+    return this.userService.update(id, updateUserDto, avatar);
   }
 
   @Get(':id/avatar')
@@ -277,6 +325,30 @@ export class UserController {
     @Body() dto: UpdateUserProfileDto,
   ) {
     return this.userService.updateProfile(id, dto);
+  }
+
+  @Post(':id/reset-password')
+  @ApiOperation({ summary: 'Reset user password and generate a new one' })
+  @ApiResponse({
+    status: 200,
+    description: 'Password successfully reset',
+    schema: {
+      type: 'object',
+      properties: {
+        message: {
+          type: 'string',
+          example: 'Password successfully reset',
+        },
+        newPassword: {
+          type: 'string',
+          example: 'Abc123def456',
+        },
+      },
+    },
+  })
+  @ApiResponse({ status: 404, description: 'User not found' })
+  resetPassword(@Param('id', ParseIntPipe) id: number) {
+    return this.userService.resetPassword(id);
   }
 
   @Delete(':id')
