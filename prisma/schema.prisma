@@ -21,6 +21,19 @@ enum RegistrationInvitationStatus {
   CANCELLED
 }
 
+enum CompanyType {
+  PROJECT
+  CUSTOMER
+  SUPPLIER
+  OTHER
+}
+
+enum CompanyAddedVia {
+  MANUAL
+  IMPORT
+  API
+}
+
 model Region {
   id      Int       @id @default(autoincrement())
   name    String    @unique
@@ -127,6 +140,10 @@ model User {
 
   filesCreated File[] @relation("UserFilesCreated")
 
+  createdCompanies  Company[]    @relation("CompanyCreatedBy")
+  approvedCompanies Company[]    @relation("CompanyApprovedBy")
+  companyLogs       CompanyLog[]
+
   @@index([region_id], map: "idx_user_region_id")
   @@index([status], map: "idx_user_status")
   @@index([isDeleted], map: "idx_user_is_deleted")
@@ -147,10 +164,28 @@ model Company {
   profiles    UserProfile[]
   Project     Project[]
 
+  type            CompanyType     @default(PROJECT)
+  createdById     Int?
+  createdBy       User?           @relation("CompanyCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  addedVia        CompanyAddedVia @default(MANUAL)
+  originProjectId Int?
+  originProject   Project?        @relation("CompanyOriginProject", fields: [originProjectId], references: [id], onDelete: SetNull)
+  approvedById    Int?
+  approvedBy      User?           @relation("CompanyApprovedBy", fields: [approvedById], references: [id], onDelete: SetNull)
+  approvedAt      DateTime?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  registrationInvitations RegistrationInvitation[]
+  logs                    CompanyLog[]
+
   @@index([regionId], map: "idx_company_region_id")
+  @@index([type], map: "idx_company_type")
+  @@index([createdById], map: "idx_company_created_by_id")
+  @@index([approvedById], map: "idx_company_approved_by_id")
+  @@index([originProjectId], map: "idx_company_origin_project_id")
+  @@index([createdAt], map: "idx_company_created_at")
 }
 
 model UserProfile {
@@ -178,6 +213,8 @@ model RegistrationInvitation {
   inviter    User                         @relation("InvitedBy", fields: [invited_by], references: [id])
   role_id    Int
   role       Role                         @relation(fields: [role_id], references: [id])
+  companyId  Int?
+  company    Company?                     @relation(fields: [companyId], references: [id], onDelete: SetNull)
   created_at DateTime                     @default(now())
   expires_at DateTime
 
@@ -186,6 +223,7 @@ model RegistrationInvitation {
   @@index([expires_at], map: "idx_reginv_expires_at")
   @@index([invited_by], map: "idx_reginv_invited_by")
   @@index([role_id], map: "idx_reginv_role_id")
+  @@index([companyId], map: "idx_reginv_company_id")
   @@index([status, expires_at], map: "idx_reginv_status_expires")
 }
 
@@ -265,7 +303,8 @@ model Project {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  KanbanBoard KanbanBoard[] @relation("BoardProjects")
+  KanbanBoard         KanbanBoard[] @relation("BoardProjects")
+  companiesFromOrigin Company[]     @relation("CompanyOriginProject")
 
   @@unique([name, createdAt])
   @@index([regionId], map: "idx_project_region_id")
@@ -328,4 +367,21 @@ model File {
   @@index([createdAt], map: "idx_file_created_at")
   @@index([mimeType], map: "idx_file_mime_type")
   @@index([createdBy, createdAt], map: "idx_file_creator_created_at")
+}
+
+model CompanyLog {
+  id        Int      @id @default(autoincrement())
+  companyId Int
+  company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  changedBy Int?
+  user      User?    @relation(fields: [changedBy], references: [id], onDelete: SetNull)
+  field     String
+  oldValue  String?
+  newValue  String?
+  createdAt DateTime @default(now())
+
+  @@index([companyId], map: "idx_company_log_company_id")
+  @@index([changedBy], map: "idx_company_log_changed_by")
+  @@index([createdAt], map: "idx_company_log_created_at")
+  @@index([companyId, createdAt], map: "idx_company_log_company_created_at")
 }
