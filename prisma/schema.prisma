@@ -36,7 +36,6 @@ model ProjectStatus {
   Project     Project[]
 }
 
-
 model Role {
   id                      Int                      @id @default(autoincrement())
   name                    String                   @unique
@@ -48,6 +47,8 @@ model Role {
   userRoles               UserRole[]
   rolePermissions         RolePermission[]
   registrationInvitations RegistrationInvitation[]
+
+  @@index([createdBy], map: "idx_role_created_by")
 }
 
 model Permission {
@@ -70,6 +71,9 @@ model UserRole {
   assigner   User?    @relation("UserRoleAssignedBy", fields: [assignedBy], references: [id])
 
   @@unique([userId, roleId])
+  @@index([userId], map: "idx_user_role_user_id")
+  @@index([roleId], map: "idx_user_role_role_id")
+  @@index([assignedBy], map: "idx_user_role_assigned_by")
 }
 
 model RolePermission {
@@ -83,6 +87,9 @@ model RolePermission {
   granter      User?      @relation("RolePermissionGrantedBy", fields: [grantedBy], references: [id])
 
   @@unique([roleId, permissionId])
+  @@index([roleId], map: "idx_role_permission_role_id")
+  @@index([permissionId], map: "idx_role_permission_permission_id")
+  @@index([grantedBy], map: "idx_role_permission_granted_by")
 }
 
 model User {
@@ -119,6 +126,14 @@ model User {
   boardMemberships KanbanBoardMember[]
 
   filesCreated File[] @relation("UserFilesCreated")
+
+  @@index([region_id], map: "idx_user_region_id")
+  @@index([status], map: "idx_user_status")
+  @@index([isDeleted], map: "idx_user_is_deleted")
+  @@index([created_by], map: "idx_user_created_by")
+  @@index([last_login], map: "idx_user_last_login")
+  @@index([status, isDeleted], map: "idx_user_status_deleted")
+  @@index([region_id, status], map: "idx_user_region_status")
 }
 
 model Company {
@@ -134,6 +149,8 @@ model Company {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([regionId], map: "idx_company_region_id")
 }
 
 model UserProfile {
@@ -148,6 +165,8 @@ model UserProfile {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([companyId], map: "idx_user_profile_company_id")
 }
 
 model RegistrationInvitation {
@@ -161,6 +180,13 @@ model RegistrationInvitation {
   role       Role                         @relation(fields: [role_id], references: [id])
   created_at DateTime                     @default(now())
   expires_at DateTime
+
+  @@index([email], map: "idx_reginv_email")
+  @@index([status], map: "idx_reginv_status")
+  @@index([expires_at], map: "idx_reginv_expires_at")
+  @@index([invited_by], map: "idx_reginv_invited_by")
+  @@index([role_id], map: "idx_reginv_role_id")
+  @@index([status, expires_at], map: "idx_reginv_status_expires")
 }
 
 model KanbanBoard {
@@ -184,6 +210,8 @@ model KanbanBoardMember {
   user  User        @relation(fields: [userId], references: [id])
 
   @@unique([boardId, userId])
+  @@index([boardId], map: "idx_kbm_board_id")
+  @@index([userId], map: "idx_kbm_user_id")
 }
 
 model KanbanColumn {
@@ -196,6 +224,9 @@ model KanbanColumn {
   description String?
   projects    Project[]
   createdAt   DateTime    @default(now())
+
+  @@index([boardId], map: "idx_kanban_column_board_id")
+  @@index([position], map: "idx_kanban_column_position")
 }
 
 model Project {
@@ -237,6 +268,17 @@ model Project {
   KanbanBoard KanbanBoard[] @relation("BoardProjects")
 
   @@unique([name, createdAt])
+  @@index([regionId], map: "idx_project_region_id")
+  @@index([statusId], map: "idx_project_status_id")
+  @@index([companyId], map: "idx_project_company_id")
+  @@index([createdBy], map: "idx_project_created_by")
+  @@index([kanbanColumnId], map: "idx_project_kanban_column_id")
+  @@index([expectedDeadline], map: "idx_project_expected_deadline")
+  @@index([createdAt], map: "idx_project_created_at")
+  @@index([regionId, statusId], map: "idx_project_region_status")
+  @@index([companyId, statusId], map: "idx_project_company_status")
+  @@index([createdBy, createdAt], map: "idx_project_creator_created_at")
+  @@index([statusId, expectedDeadline], map: "idx_project_status_deadline")
 }
 
 model ProjectLog {
@@ -249,6 +291,11 @@ model ProjectLog {
   oldValue  String?
   newValue  String?
   createdAt DateTime @default(now())
+
+  @@index([projectId], map: "idx_project_log_project_id")
+  @@index([changedBy], map: "idx_project_log_changed_by")
+  @@index([createdAt], map: "idx_project_log_created_at")
+  @@index([projectId, createdAt], map: "idx_project_log_project_created_at")
 }
 
 model ProjectComment {
@@ -259,6 +306,11 @@ model ProjectComment {
   author    User     @relation(fields: [authorId], references: [id])
   message   String
   createdAt DateTime @default(now())
+
+  @@index([projectId], map: "idx_project_comment_project_id")
+  @@index([authorId], map: "idx_project_comment_author_id")
+  @@index([createdAt], map: "idx_project_comment_created_at")
+  @@index([projectId, createdAt], map: "idx_project_comment_project_created_at")
 }
 
 model File {
@@ -270,5 +322,10 @@ model File {
   createdAt    DateTime @default(now())
 
   createdBy Int
-  creator   User     @relation("UserFilesCreated", fields: [createdBy], references: [id])
+  creator   User @relation("UserFilesCreated", fields: [createdBy], references: [id])
+
+  @@index([createdBy], map: "idx_file_created_by")
+  @@index([createdAt], map: "idx_file_created_at")
+  @@index([mimeType], map: "idx_file_mime_type")
+  @@index([createdBy, createdAt], map: "idx_file_creator_created_at")
 }
