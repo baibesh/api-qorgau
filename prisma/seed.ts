@@ -3,6 +3,336 @@ import * as bcrypt from 'bcrypt';
 
 const prisma = new PrismaClient();
 
+async function upsertPermissionsCompanyScope() {
+  console.log('Adding company-scoped permissions...');
+  const companyPermissions = [
+    {
+      name: 'company-users:list',
+      description: 'Просмотр списка пользователей компании',
+    },
+    {
+      name: 'company-users:read',
+      description: 'Просмотр пользователя компании',
+    },
+    {
+      name: 'company-users:invite',
+      description: 'Приглашение пользователя в компанию',
+    },
+    {
+      name: 'company-users:deactivate',
+      description: 'Деактивация пользователя компании',
+    },
+    {
+      name: 'company-users:assign-role',
+      description: 'Назначение роли пользователю компании',
+    },
+
+    {
+      name: 'company-profile:update',
+      description: 'Обновление профиля компании',
+    },
+
+    {
+      name: 'company-projects:list',
+      description: 'Просмотр списка проектов компании',
+    },
+    { name: 'company-projects:read', description: 'Просмотр проекта компании' },
+    {
+      name: 'company-projects:create',
+      description: 'Создание проекта компании',
+    },
+    {
+      name: 'company-projects:update',
+      description: 'Обновление проекта компании',
+    },
+    {
+      name: 'company-projects:archive',
+      description: 'Архивирование проекта компании',
+    },
+
+    {
+      name: 'self-profile:update',
+      description: 'Обновление собственного профиля',
+    },
+  ];
+
+  await prisma.permission.createMany({
+    data: companyPermissions,
+    skipDuplicates: true,
+  });
+}
+
+async function upsertRoles(adminUserId: number) {
+  console.log('Upserting roles...');
+
+  // Note: Role.createdBy is Int?, not a relation, so we use the scalar field
+  await prisma.role.upsert({
+    where: { name: 'COMPANY_ADMIN' },
+    update: {},
+    create: {
+      name: 'COMPANY_ADMIN',
+      description: 'Администратор компании',
+      createdBy: adminUserId,
+    },
+  });
+
+  await prisma.role.upsert({
+    where: { name: 'COMPANY_USER' },
+    update: {},
+    create: {
+      name: 'COMPANY_USER',
+      description: 'Пользователь компании',
+      createdBy: adminUserId,
+    },
+  });
+}
+
+async function linkRolePermissions(grantedByUserId: number) {
+  console.log('Linking roles with permissions...');
+
+  // Get role IDs
+  const companyAdminRole = await prisma.role.findUnique({
+    where: { name: 'COMPANY_ADMIN' },
+  });
+  const companyUserRole = await prisma.role.findUnique({
+    where: { name: 'COMPANY_USER' },
+  });
+
+  if (!companyAdminRole || !companyUserRole) {
+    throw new Error('Roles not found');
+  }
+
+  // COMPANY_ADMIN permissions: all company-* + self-profile:update
+  const companyAdminPermissionNames = [
+    'company-users:list',
+    'company-users:read',
+    'company-users:invite',
+    'company-users:deactivate',
+    'company-users:assign-role',
+    'company-profile:update',
+    'company-projects:list',
+    'company-projects:read',
+    'company-projects:create',
+    'company-projects:update',
+    'company-projects:archive',
+    'self-profile:update',
+  ];
+
+  const companyAdminPermissions = await prisma.permission.findMany({
+    where: { name: { in: companyAdminPermissionNames } },
+  });
+
+  for (const permission of companyAdminPermissions) {
+    const existing = await prisma.rolePermission.findFirst({
+      where: {
+        roleId: companyAdminRole.id,
+        permissionId: permission.id,
+      },
+    });
+
+    if (!existing) {
+      await prisma.rolePermission.create({
+        data: {
+          roleId: companyAdminRole.id,
+          permissionId: permission.id,
+          grantedBy: grantedByUserId,
+        },
+      });
+    }
+  }
+
+  // COMPANY_USER permissions
+  const companyUserPermissionNames = [
+    'self-profile:update',
+    'company-projects:list',
+    'company-projects:read',
+    'company-projects:create',
+    'company-projects:update',
+  ];
+
+  const companyUserPermissions = await prisma.permission.findMany({
+    where: { name: { in: companyUserPermissionNames } },
+  });
+
+  for (const permission of companyUserPermissions) {
+    const existing = await prisma.rolePermission.findFirst({
+      where: {
+        roleId: companyUserRole.id,
+        permissionId: permission.id,
+      },
+    });
+
+    if (!existing) {
+      await prisma.rolePermission.create({
+        data: {
+          roleId: companyUserRole.id,
+          permissionId: permission.id,
+          grantedBy: grantedByUserId,
+        },
+      });
+    }
+  }
+}
+
+async function upsertProjectStatuses() {
+  console.log('Upserting project statuses...');
+
+  const statuses = [
+    { name: 'Новый', description: 'Новый проект' },
+    { name: 'В работе', description: 'Проект в работе' },
+    { name: 'На согласовании', description: 'Проект на согласовании' },
+    { name: 'Закрыт', description: 'Проект закрыт' },
+  ];
+
+  for (const status of statuses) {
+    const existing = await prisma.projectStatus.findFirst({
+      where: { name: status.name },
+    });
+
+    if (existing) {
+      await prisma.projectStatus.update({
+        where: { id: existing.id },
+        data: { description: status.description },
+      });
+    } else {
+      await prisma.projectStatus.create({
+        data: status,
+      });
+    }
+  }
+}
+
+async function upsertProjectCompany(adminUserId: number, regionId: number) {
+  console.log('Upserting demo project company...');
+
+  const company = await prisma.company.upsert({
+    where: { name: 'Demo Project Company' },
+    update: {},
+    create: {
+      name: 'Demo Project Company',
+      description: 'Демонстрационная проектная компания',
+      type: 'PROJECT',
+      region: { connect: { id: regionId } },
+      createdBy: { connect: { id: adminUserId } },
+      approvedBy: { connect: { id: adminUserId } },
+      approvedAt: new Date(),
+      addedVia: 'MANUAL',
+    },
+  });
+
+  return company;
+}
+
+async function upsertProjectCompanyAdminUser(
+  companyId: number,
+  regionId: number,
+  assignedBy: number,
+) {
+  console.log('Creating company admin user...');
+
+  const hashedPassword = await bcrypt.hash('Qqwerty1!', 10);
+
+  const pcAdminUser = await prisma.user.upsert({
+    where: { email: 'pc-admin@qorgau.kz' },
+    update: {},
+    create: {
+      email: 'pc-admin@qorgau.kz',
+      password_hash: hashedPassword,
+      full_name: 'Администратор Компании',
+      isAdmin: false,
+      status: 'ACTIVE',
+      phone: '+7 (777) 234-56-78',
+      region_id: regionId,
+      created_by: assignedBy,
+    },
+  });
+
+  // Create or update profile
+  await prisma.userProfile.upsert({
+    where: { userId: pcAdminUser.id },
+    update: { companyId: companyId },
+    create: {
+      userId: pcAdminUser.id,
+      companyId: companyId,
+      position: 'Администратор',
+    },
+  });
+
+  // Assign COMPANY_ADMIN role
+  const companyAdminRole = await prisma.role.findUnique({
+    where: { name: 'COMPANY_ADMIN' },
+  });
+
+  if (companyAdminRole) {
+    const existingRole = await prisma.userRole.findFirst({
+      where: {
+        userId: pcAdminUser.id,
+        roleId: companyAdminRole.id,
+      },
+    });
+
+    if (!existingRole) {
+      await prisma.userRole.create({
+        data: {
+          userId: pcAdminUser.id,
+          roleId: companyAdminRole.id,
+          assignedBy: assignedBy,
+        },
+      });
+    }
+  }
+
+  return pcAdminUser;
+}
+
+async function upsertCompanyInvitation(
+  companyId: number,
+  roleId: number,
+  invitedBy: number,
+) {
+  console.log('Creating company invitation...');
+
+  // Use fixed code for idempotent seeding
+  const code = 'DEMO-COMPANY-INVITE';
+
+  // Delete existing invitation with same email to avoid duplicates
+  await prisma.registrationInvitation.deleteMany({
+    where: { email: 'demo-user@example.com' },
+  });
+
+  await prisma.registrationInvitation.create({
+    data: {
+      email: 'demo-user@example.com',
+      code,
+      status: 'PENDING',
+      invited_by: invitedBy,
+      role_id: roleId,
+      companyId: companyId,
+      expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
+    },
+  });
+}
+
+async function upsertBoardMembership(boardId: number, userId: number) {
+  console.log('Adding board membership for company admin...');
+
+  const existing = await prisma.kanbanBoardMember.findFirst({
+    where: {
+      boardId: boardId,
+      userId: userId,
+    },
+  });
+
+  if (!existing) {
+    await prisma.kanbanBoardMember.create({
+      data: {
+        boardId: boardId,
+        userId: userId,
+      },
+    });
+  }
+}
+
 async function upsertCentralKanban() {
   const code = 'central-board';
   const name = 'Центральная Канбан';
@@ -114,37 +444,88 @@ async function seedRegionsPermissionsAndAdmin() {
     { name: 'projects:create', description: 'Создание проекта' },
     { name: 'projects:update', description: 'Обновление проекта' },
     { name: 'projects:delete', description: 'Удаление проекта' },
-    { name: 'projects:move', description: 'Перемещение проекта между колонками' },
-    { name: 'projects:status:update', description: 'Обновление статуса проекта' },
+    {
+      name: 'projects:move',
+      description: 'Перемещение проекта между колонками',
+    },
+    {
+      name: 'projects:status:update',
+      description: 'Обновление статуса проекта',
+    },
 
     { name: 'kanban-boards:list', description: 'Просмотр списка канбан-досок' },
     { name: 'kanban-boards:read', description: 'Просмотр канбан-доски' },
     { name: 'kanban-boards:create', description: 'Создание канбан-доски' },
     { name: 'kanban-boards:update', description: 'Обновление канбан-доски' },
     { name: 'kanban-boards:delete', description: 'Удаление канбан-доски' },
-    { name: 'kanban-boards:members:add', description: 'Добавление участника в канбан-доску' },
-    { name: 'kanban-boards:members:list', description: 'Просмотр участников канбан-доски' },
-    { name: 'kanban-boards:members:remove', description: 'Удаление участника из канбан-доски' },
-    { name: 'kanban-boards:join', description: 'Присоединение к канбан-доске по коду' },
-    { name: 'kanban-boards:projects:list', description: 'Просмотр проектов доски, сгруппированных по колонкам' },
+    {
+      name: 'kanban-boards:members:add',
+      description: 'Добавление участника в канбан-доску',
+    },
+    {
+      name: 'kanban-boards:members:list',
+      description: 'Просмотр участников канбан-доски',
+    },
+    {
+      name: 'kanban-boards:members:remove',
+      description: 'Удаление участника из канбан-доски',
+    },
+    {
+      name: 'kanban-boards:join',
+      description: 'Присоединение к канбан-доске по коду',
+    },
+    {
+      name: 'kanban-boards:projects:list',
+      description: 'Просмотр проектов доски, сгруппированных по колонкам',
+    },
 
-    { name: 'kanban-columns:list', description: 'Просмотр колонок канбан-доски' },
+    {
+      name: 'kanban-columns:list',
+      description: 'Просмотр колонок канбан-доски',
+    },
     { name: 'kanban-columns:create', description: 'Создание колонки' },
     { name: 'kanban-columns:update', description: 'Обновление колонки' },
-    { name: 'kanban-columns:reorder', description: 'Изменение порядка колонок' },
+    {
+      name: 'kanban-columns:reorder',
+      description: 'Изменение порядка колонок',
+    },
 
-    { name: 'project-comments:list', description: 'Просмотр комментариев проекта' },
-    { name: 'project-comments:create', description: 'Добавление комментария к проекту' },
+    {
+      name: 'project-comments:list',
+      description: 'Просмотр комментариев проекта',
+    },
+    {
+      name: 'project-comments:create',
+      description: 'Добавление комментария к проекту',
+    },
 
-    { name: 'project-logs:list', description: 'Просмотр истории изменений проекта' },
+    {
+      name: 'project-logs:list',
+      description: 'Просмотр истории изменений проекта',
+    },
 
-    { name: 'project-statuses:list', description: 'Просмотр списка статусов проекта' },
+    {
+      name: 'project-statuses:list',
+      description: 'Просмотр списка статусов проекта',
+    },
     { name: 'project-statuses:read', description: 'Просмотр статуса проекта' },
-    { name: 'project-statuses:create', description: 'Создание статуса проекта' },
-    { name: 'project-statuses:update', description: 'Обновление статуса проекта' },
-    { name: 'project-statuses:delete', description: 'Удаление статуса проекта' },
+    {
+      name: 'project-statuses:create',
+      description: 'Создание статуса проекта',
+    },
+    {
+      name: 'project-statuses:update',
+      description: 'Обновление статуса проекта',
+    },
+    {
+      name: 'project-statuses:delete',
+      description: 'Удаление статуса проекта',
+    },
 
-    { name: 'project-types:list', description: 'Просмотр списка типов проекта' },
+    {
+      name: 'project-types:list',
+      description: 'Просмотр списка типов проекта',
+    },
     { name: 'project-types:read', description: 'Просмотр типа проекта' },
     { name: 'project-types:create', description: 'Создание типа проекта' },
     { name: 'project-types:update', description: 'Обновление типа проекта' },
@@ -167,7 +548,9 @@ async function seedRegionsPermissionsAndAdmin() {
     data: permissions,
     skipDuplicates: true,
   });
-  /* eslint-enable prettier/prettier */
+
+  // Add company-scoped permissions
+  await upsertPermissionsCompanyScope();
 
   // Get the first region for the admin user
   const firstRegion = await prisma.region.findFirst();
@@ -176,7 +559,6 @@ async function seedRegionsPermissionsAndAdmin() {
   const hashedPassword = await bcrypt.hash('Qqwerty1!', 10);
 
   // Create admin user
-  // eslint-disable-next-line no-console
   console.log('Creating admin user...');
   const adminUser = await prisma.user.upsert({
     where: { email: 'admin@qorgau.kz' },
@@ -192,7 +574,6 @@ async function seedRegionsPermissionsAndAdmin() {
     },
   });
 
-  // eslint-disable-next-line no-console
   console.log('Admin user created:', {
     id: adminUser.id,
     email: adminUser.email,
@@ -200,13 +581,52 @@ async function seedRegionsPermissionsAndAdmin() {
     isAdmin: adminUser.isAdmin,
   });
 
-  // eslint-disable-next-line no-console
+  // Upsert roles
+  await upsertRoles(adminUser.id);
+
+  // Link role permissions
+  await linkRolePermissions(adminUser.id);
+
+  // Upsert project statuses
+  await upsertProjectStatuses();
+
+  // Upsert central kanban
+  const centralBoard = await upsertCentralKanban();
+
+  // Upsert project company
+  const projectCompany = await upsertProjectCompany(
+    adminUser.id,
+    firstRegion?.id || 1,
+  );
+
+  // Create company admin user
+  const companyAdmin = await upsertProjectCompanyAdminUser(
+    projectCompany.id,
+    firstRegion?.id || 1,
+    adminUser.id,
+  );
+
+  // Create company invitation (optional)
+  const companyUserRole = await prisma.role.findUnique({
+    where: { name: 'COMPANY_USER' },
+  });
+
+  if (companyUserRole) {
+    await upsertCompanyInvitation(
+      projectCompany.id,
+      companyUserRole.id,
+      adminUser.id,
+    );
+  }
+
+  // Add board membership for company admin
+  await upsertBoardMembership(centralBoard.id, companyAdmin.id);
+
   console.log('Seed completed successfully!');
 }
 
 async function main() {
   await seedRegionsPermissionsAndAdmin();
-  await upsertCentralKanban();
 }
 
 main()
@@ -214,7 +634,6 @@ main()
     await prisma.$disconnect();
   })
   .catch(async (e) => {
-    // eslint-disable-next-line no-console
     console.error('Error during seed:', e);
     await prisma.$disconnect();
     process.exit(1);
