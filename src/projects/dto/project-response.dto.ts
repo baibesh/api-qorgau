@@ -174,10 +174,22 @@ export class ProjectResponseDto {
   };
 
   @ApiProperty({
-    description: 'Attached files as JSON',
-    example: '[]',
+    description: 'Attached files information',
+    type: 'array',
+    items: {
+      type: 'object',
+      properties: {
+        id: { type: 'number', example: 1 },
+        originalName: { type: 'string', example: 'document.pdf' },
+        url: { type: 'string', example: '/api/files/1/download' },
+      },
+    },
   })
-  attachedFiles: any;
+  attachedFiles: Array<{
+    id: number;
+    originalName: string;
+    url: string;
+  }>;
 
   @ApiProperty({
     description: 'Expected deadline',

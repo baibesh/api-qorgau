@@ -16,7 +16,33 @@ export class ProjectsService {
 
   constructor(private readonly prisma: PrismaService) {}
 
-  private mapToDto(project: any): ProjectResponseDto {
+  private async enrichAttachedFiles(
+    fileIds: any,
+  ): Promise<Array<{ id: number; originalName: string; url: string }>> {
+    if (!Array.isArray(fileIds) || fileIds.length === 0) {
+      return [];
+    }
+
+    const files = await this.prisma.file.findMany({
+      where: {
+        id: { in: fileIds.map((id: any) => Number(id)) },
+      },
+      select: {
+        id: true,
+        originalName: true,
+      },
+    });
+
+    return files.map((file) => ({
+      id: file.id,
+      originalName: file.originalName,
+      url: `/api/files/${file.id}/download`,
+    }));
+  }
+
+  private async mapToDto(project: any): Promise<ProjectResponseDto> {
+    const attachedFiles = await this.enrichAttachedFiles(project.attachedFiles);
+
     return {
       id: project.id,
       name: project.name,
@@ -68,7 +94,7 @@ export class ProjectsService {
             position: project.kanbanColumn.position,
           }
         : { id: project.kanbanColumnId, name: '', position: 0 },
-      attachedFiles: project.attachedFiles,
+      attachedFiles,
       expectedDeadline: project.expectedDeadline ?? null,
       comments: project.comments ?? null,
       createdAt: project.createdAt,
@@ -154,7 +180,7 @@ export class ProjectsService {
       });
 
       this.logger.log(`Project created with id: ${project.id}`);
-      return this.mapToDto(project);
+      return await this.mapToDto(project);
     } catch (e: any) {
       throw e;
     }
@@ -204,7 +230,7 @@ export class ProjectsService {
     });
 
     this.logger.log(`Found ${projects.length} projects`);
-    return projects.map((p) => this.mapToDto(p));
+    return await Promise.all(projects.map((p) => this.mapToDto(p)));
   }
 
   async checkName(name: string): Promise<CheckProjectNameResponseDto> {
@@ -302,7 +328,7 @@ export class ProjectsService {
         throw new NotFoundException(`Project with id ${id} not found`);
       }
 
-      return this.mapToDto(project);
+      return await this.mapToDto(project);
     } catch (e: any) {
       if (e?.code === 'P2021') {
         this.logger.warn(
@@ -363,7 +389,8 @@ export class ProjectsService {
           throw new NotFoundException(`Project with id ${id} not found`);
         }
 
-        return { ...(project as any), executors: [] } as ProjectResponseDto;
+        const enrichedProject = { ...(project as any), executors: [] };
+        return await this.mapToDto(enrichedProject);
       }
       throw e;
     }
@@ -425,7 +452,7 @@ export class ProjectsService {
       await this.logChanges(id, currentProject, updateProjectDto, updatedBy);
 
       this.logger.log(`Project with id ${id} updated successfully`);
-      return this.mapToDto(project);
+      return await this.mapToDto(project);
     } catch (e: any) {
       if (e?.code === 'P2021') {
         this.logger.warn(
@@ -459,7 +486,8 @@ export class ProjectsService {
         this.logger.log(
           `Project with id ${id} updated successfully (fallback without executors)`,
         );
-        return { ...(project as any), executors: [] } as ProjectResponseDto;
+        const enrichedProject = { ...(project as any), executors: [] };
+        return await this.mapToDto(enrichedProject);
       }
       throw e;
     }
@@ -528,7 +556,7 @@ export class ProjectsService {
       });
 
       this.logger.log(`Status updated for project with id ${id}`);
-      return this.mapToDto(project);
+      return await this.mapToDto(project);
     } catch (e: any) {
       if (e?.code === 'P2021') {
         this.logger.warn(
@@ -569,7 +597,8 @@ export class ProjectsService {
         this.logger.log(
           `Status updated for project with id ${id} (fallback without executors)`,
         );
-        return { ...(project as any), executors: [] } as ProjectResponseDto;
+        const enrichedProject = { ...(project as any), executors: [] };
+        return await this.mapToDto(enrichedProject);
       }
       throw e;
     }
@@ -629,7 +658,7 @@ export class ProjectsService {
       this.logger.log(
         `Project with id ${id} moved to kanban column ${columnId}`,
       );
-      return this.mapToDto(project);
+      return await this.mapToDto(project);
     } catch (e: any) {
       if (e?.code === 'P2021') {
         this.logger.warn(
@@ -670,7 +699,8 @@ export class ProjectsService {
         this.logger.log(
           `Project with id ${id} moved to kanban column ${columnId} (fallback without executors)`,
         );
-        return { ...(project as any), executors: [] } as ProjectResponseDto;
+        const enrichedProject = { ...(project as any), executors: [] };
+        return await this.mapToDto(enrichedProject);
       }
       throw e;
     }

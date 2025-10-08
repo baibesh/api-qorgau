@@ -90,11 +90,11 @@ export class FilesController {
   ) {
     const { meta, stream } = await this.filesService.getFile(id);
 
-    res.setHeader('Content-Type', meta.mimeType);
+    res.setHeader('Content-Type', meta.mimeType || 'application/octet-stream');
     res.setHeader('Content-Length', meta.size.toString());
     res.setHeader(
       'Content-Disposition',
-      `attachment; filename="${encodeURIComponent(meta.originalName)}"`,
+      `inline; filename="${encodeURIComponent(meta.originalName)}"`,
     );
 
     stream.pipe(res);
