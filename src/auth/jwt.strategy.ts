@@ -29,8 +29,10 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   }
 
   async validate(payload: any) {
-    this.logger.debug(`JWT validation started for payload: ${JSON.stringify(payload)}`);
-    
+    this.logger.debug(
+      `JWT validation started for payload: ${JSON.stringify(payload)}`,
+    );
+
     const user = await this.prisma.user.findUnique({
       where: { id: payload.sub },
       select: {
@@ -54,7 +56,17 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       throw new UnauthorizedException('User account is not active');
     }
 
-    const result = { userId: user.id, email: user.email, isAdmin: user.isAdmin };
+    // Return enhanced user object with JWT payload data
+    const result = {
+      userId: user.id,
+      email: user.email,
+      isAdmin: user.isAdmin,
+      companyId: payload.companyId || null,
+      scope: payload.scope || 'GLOBAL',
+      roles: payload.roles || [],
+      aclVersion: payload.aclVersion || 1,
+    };
+
     this.logger.debug(`JWT validation successful: ${JSON.stringify(result)}`);
     return result;
   }
