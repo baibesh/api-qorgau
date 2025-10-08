@@ -223,6 +223,27 @@ async function upsertProjectCompany(adminUserId: number, regionId: number) {
   return company;
 }
 
+async function upsertCustomerCompany(adminUserId: number, regionId: number) {
+  console.log('Upserting demo customer company...');
+
+  const company = await prisma.company.upsert({
+    where: { name: 'Demo Customer Company' },
+    update: {},
+    create: {
+      name: 'Demo Customer Company',
+      description: 'Демонстрационная компания-заказчик',
+      type: 'CUSTOMER',
+      region: { connect: { id: regionId } },
+      createdBy: { connect: { id: adminUserId } },
+      approvedBy: { connect: { id: adminUserId } },
+      approvedAt: new Date(),
+      addedVia: 'MANUAL',
+    },
+  });
+
+  return company;
+}
+
 async function upsertProjectCompanyAdminUser(
   companyId: number,
   regionId: number,
@@ -598,6 +619,9 @@ async function seedRegionsPermissionsAndAdmin() {
     adminUser.id,
     firstRegion?.id || 1,
   );
+
+  // Upsert customer company
+  await upsertCustomerCompany(adminUser.id, firstRegion?.id || 1);
 
   // Create company admin user
   const companyAdmin = await upsertProjectCompanyAdminUser(

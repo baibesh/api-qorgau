@@ -24,8 +24,6 @@ enum RegistrationInvitationStatus {
 enum CompanyType {
   PROJECT
   CUSTOMER
-  SUPPLIER
-  OTHER
 }
 
 enum CompanyAddedVia {

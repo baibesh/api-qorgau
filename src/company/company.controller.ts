@@ -60,7 +60,7 @@ export class CompanyController {
   @ApiQuery({
     name: 'type',
     required: false,
-    enum: ['PROJECT', 'CUSTOMER', 'SUPPLIER', 'OTHER'],
+    enum: ['PROJECT', 'CUSTOMER'],
     description: 'Filter companies by type',
   })
   @ApiResponse({
