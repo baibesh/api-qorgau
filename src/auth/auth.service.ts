@@ -32,7 +32,44 @@ export class AuthService {
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    const payload = { email: user.email, sub: user.id };
+    // Fetch user with profile and roles for JWT payload
+    const userWithProfile = await this.prisma.user.findUnique({
+      where: { id: user.id },
+      select: {
+        id: true,
+        email: true,
+        full_name: true,
+        isAdmin: true,
+        profile: {
+          select: { companyId: true },
+        },
+        userRoles: {
+          select: {
+            role: { select: { name: true } },
+          },
+        },
+      },
+    });
+
+    if (!userWithProfile) {
+      throw new UnauthorizedException('User data not found');
+    }
+
+    const companyId = userWithProfile.profile?.companyId || null;
+    const scope = companyId !== null ? 'COMPANY' : 'GLOBAL';
+    const roles = userWithProfile.userRoles.map((ur) => ur.role.name);
+    const aclVersion = 1; // TODO: make dynamic
+
+    // JWT payload with enhanced fields
+    const payload = {
+      email: userWithProfile.email,
+      sub: userWithProfile.id,
+      companyId,
+      scope,
+      roles,
+      aclVersion,
+    };
+
     const accessToken = this.jwtService.sign(payload);
     const refreshToken = this.jwtService.sign(payload, {
       secret:
@@ -51,16 +88,18 @@ export class AuthService {
       },
     });
 
-    this.logger.log(`User ${user.email} logged in successfully`);
+    this.logger.log(
+      `User ${user.email} logged in successfully (scope: ${scope}, roles: ${roles.join(', ')})`,
+    );
 
     return {
       accessToken,
       refreshToken,
       user: {
-        id: user.id,
-        email: user.email,
-        full_name: user.full_name,
-        isAdmin: user.isAdmin,
+        id: userWithProfile.id,
+        email: userWithProfile.email,
+        full_name: userWithProfile.full_name,
+        isAdmin: userWithProfile.isAdmin,
       },
     };
   }
@@ -75,6 +114,19 @@ export class AuthService {
 
       const user = await this.prisma.user.findUnique({
         where: { id: payload.sub },
+        select: {
+          id: true,
+          email: true,
+          refreshToken: true,
+          profile: {
+            select: { companyId: true },
+          },
+          userRoles: {
+            select: {
+              role: { select: { name: true } },
+            },
+          },
+        },
       });
 
       if (!user || !user.refreshToken) {
@@ -89,7 +141,21 @@ export class AuthService {
         throw new UnauthorizedException('Invalid refresh token');
       }
 
-      const newPayload = { email: user.email, sub: user.id };
+      // Rebuild JWT payload with current user data
+      const companyId = user.profile?.companyId || null;
+      const scope = companyId !== null ? 'COMPANY' : 'GLOBAL';
+      const roles = user.userRoles.map((ur) => ur.role.name);
+      const aclVersion = 1; // TODO: make dynamic
+
+      const newPayload = {
+        email: user.email,
+        sub: user.id,
+        companyId,
+        scope,
+        roles,
+        aclVersion,
+      };
+
       const newAccessToken = this.jwtService.sign(newPayload);
       const newRefreshToken = this.jwtService.sign(newPayload, {
         secret:
@@ -155,19 +221,23 @@ export class AuthService {
     };
   }
 
-  async getUserPermissions(
-    userId: number,
-  ): Promise<{ userId: number; permissions: string[] }> {
+  async getUserPermissions(userId: number) {
     this.logger.log(`Fetching permissions for user ${userId}`);
 
-    const userWithRoles = await this.prisma.user.findUnique({
+    const user = await this.prisma.user.findUnique({
       where: { id: userId },
       select: {
         id: true,
+        profile: {
+          select: {
+            companyId: true,
+          },
+        },
         userRoles: {
           select: {
             role: {
               select: {
+                name: true,
                 rolePermissions: {
                   select: {
                     permission: {
@@ -182,19 +252,43 @@ export class AuthService {
       },
     });
 
-    if (!userWithRoles) {
+    if (!user) {
       throw new UnauthorizedException('User not found');
     }
 
+    // Extract companyId from profile
+    const companyId = user.profile?.companyId || null;
+
+    // Determine scope: COMPANY if user has companyId, otherwise GLOBAL
+    const scope = companyId !== null ? 'COMPANY' : 'GLOBAL';
+
+    // Extract roles
+    const roles = user.userRoles.map((ur) => ur.role.name);
+
+    // Extract unique permissions
     const permissionsSet = new Set<string>();
-    for (const ur of userWithRoles.userRoles) {
+    for (const ur of user.userRoles) {
       for (const rp of ur.role.rolePermissions) {
         if (rp.permission?.name) permissionsSet.add(rp.permission.name);
       }
     }
-
     const permissions = Array.from(permissionsSet).sort();
-    this.logger.log(`User ${userId} has ${permissions.length} permissions`);
-    return { userId: userWithRoles.id, permissions };
+
+    // ACL version (for now, hardcoded to 1; can be dynamic later)
+    // In production, this would be incremented when roles/permissions change
+    const aclVersion = 1;
+
+    this.logger.log(
+      `User ${userId} has ${permissions.length} permissions, scope: ${scope}, roles: ${roles.join(', ')}`,
+    );
+
+    return {
+      userId: user.id,
+      companyId,
+      scope,
+      roles,
+      permissions,
+      aclVersion,
+    };
   }
 }
