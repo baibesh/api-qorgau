@@ -24,6 +24,8 @@ import { CompanyService } from './company.service';
 import { CreateCompanyDto } from './dto/create-company.dto';
 import { UpdateCompanyDto } from './dto/update-company.dto';
 import { CompanyResponseDto } from './dto/company-response.dto';
+import { AddUserDto } from './dto/add-user.dto';
+import { UpdateUserDto } from './dto/update-user.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { PermissionsGuard } from '../common/guards/permissions.guard';
 import { CompanyScopeGuard } from '../common/guards/company-scope.guard';
@@ -273,5 +275,194 @@ export class CompanyController {
     @Param('userId', ParseIntPipe) userId: number,
   ) {
     return this.companyService.deactivateUser(id, userId);
+  }
+
+  @Post(':id/users/add-existing')
+  @UseGuards(JwtAuthGuard, PermissionsGuard, CompanyScopeGuard)
+  @Permissions('company-users:invite')
+  @CompanyScope()
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Add an existing user to the company directly' })
+  @ApiParam({
+    name: 'id',
+    type: 'number',
+    description: 'Company ID',
+    example: 2,
+  })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        userId: {
+          type: 'number',
+          example: 5,
+        },
+      },
+      required: ['userId'],
+    },
+  })
+  @ApiResponse({
+    status: 201,
+    description: 'User added to company successfully',
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'Company or user not found',
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'User already belongs to a company',
+  })
+  @ApiResponse({
+    status: 401,
+    description: 'Unauthorized',
+  })
+  @ApiResponse({
+    status: 403,
+    description: 'Forbidden - missing permissions or accessing wrong company',
+  })
+  addUserToCompany(
+    @Param('id', ParseIntPipe) id: number,
+    @Body('userId', ParseIntPipe) userId: number,
+    @Req() req: any,
+  ) {
+    return this.companyService.addUserToCompany(id, userId, req.user.userId);
+  }
+
+  @Post(':id/users')
+  @UseGuards(JwtAuthGuard, PermissionsGuard, CompanyScopeGuard)
+  @Permissions('company-users:invite')
+  @CompanyScope()
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Create a new user and add to the company' })
+  @ApiParam({
+    name: 'id',
+    type: 'number',
+    description: 'Company ID',
+    example: 2,
+  })
+  @ApiBody({ type: AddUserDto })
+  @ApiResponse({
+    status: 201,
+    description: 'User created and added to company successfully',
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'Company not found',
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'User with this email already exists',
+  })
+  @ApiResponse({
+    status: 401,
+    description: 'Unauthorized',
+  })
+  @ApiResponse({
+    status: 403,
+    description: 'Forbidden - missing permissions or accessing wrong company',
+  })
+  createUserForCompany(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() addUserDto: AddUserDto,
+    @Req() req: any,
+  ) {
+    return this.companyService.createUserForCompany(
+      id,
+      addUserDto,
+      req.user.userId,
+    );
+  }
+
+  @Patch(':id/users/:userId')
+  @UseGuards(JwtAuthGuard, PermissionsGuard, CompanyScopeGuard)
+  @Permissions('company-users:invite')
+  @CompanyScope()
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Update a company user' })
+  @ApiParam({
+    name: 'id',
+    type: 'number',
+    description: 'Company ID',
+    example: 2,
+  })
+  @ApiParam({
+    name: 'userId',
+    type: 'number',
+    description: 'User ID',
+    example: 10,
+  })
+  @ApiBody({ type: UpdateUserDto })
+  @ApiResponse({
+    status: 200,
+    description: 'User updated successfully',
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'Company or user not found',
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'User does not belong to this company',
+  })
+  @ApiResponse({
+    status: 401,
+    description: 'Unauthorized',
+  })
+  @ApiResponse({
+    status: 403,
+    description: 'Forbidden - missing permissions or accessing wrong company',
+  })
+  updateCompanyUser(
+    @Param('id', ParseIntPipe) id: number,
+    @Param('userId', ParseIntPipe) userId: number,
+    @Body() updateUserDto: UpdateUserDto,
+  ) {
+    return this.companyService.updateCompanyUser(id, userId, updateUserDto);
+  }
+
+  @Delete(':id/users/:userId')
+  @UseGuards(JwtAuthGuard, PermissionsGuard, CompanyScopeGuard)
+  @Permissions('company-users:deactivate')
+  @CompanyScope()
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Delete a company user (soft delete)' })
+  @ApiParam({
+    name: 'id',
+    type: 'number',
+    description: 'Company ID',
+    example: 2,
+  })
+  @ApiParam({
+    name: 'userId',
+    type: 'number',
+    description: 'User ID',
+    example: 10,
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'User deleted successfully',
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'Company or user not found',
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'User does not belong to this company',
+  })
+  @ApiResponse({
+    status: 401,
+    description: 'Unauthorized',
+  })
+  @ApiResponse({
+    status: 403,
+    description: 'Forbidden - missing permissions or accessing wrong company',
+  })
+  removeCompanyUser(
+    @Param('id', ParseIntPipe) id: number,
+    @Param('userId', ParseIntPipe) userId: number,
+  ) {
+    return this.companyService.removeCompanyUser(id, userId);
   }
 }
