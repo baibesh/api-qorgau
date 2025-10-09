@@ -17,7 +17,9 @@ export class CompanyService {
 
   constructor(private readonly prisma: PrismaService) {}
 
-  async create(createCompanyDto: CreateCompanyDto): Promise<CompanyResponseDto> {
+  async create(
+    createCompanyDto: CreateCompanyDto,
+  ): Promise<CompanyResponseDto> {
     this.logger.log(`Creating company with name: ${createCompanyDto.name}`);
 
     // Check if company with this name already exists
@@ -26,7 +28,9 @@ export class CompanyService {
     });
 
     if (existingCompany) {
-      this.logger.warn(`Company with name ${createCompanyDto.name} already exists`);
+      this.logger.warn(
+        `Company with name ${createCompanyDto.name} already exists`,
+      );
       throw new CompanyAlreadyExistsException();
     }
 
@@ -37,7 +41,9 @@ export class CompanyService {
       });
 
       if (existingCompanyByInn) {
-        this.logger.warn(`Company with INN ${createCompanyDto.inn} already exists`);
+        this.logger.warn(
+          `Company with INN ${createCompanyDto.inn} already exists`,
+        );
         throw new CompanyAlreadyExistsException();
       }
     }
@@ -83,7 +89,10 @@ export class CompanyService {
     return company;
   }
 
-  async update(id: number, updateCompanyDto: UpdateCompanyDto): Promise<CompanyResponseDto> {
+  async update(
+    id: number,
+    updateCompanyDto: UpdateCompanyDto,
+  ): Promise<CompanyResponseDto> {
     this.logger.log(`Updating company with id: ${id}`);
 
     // Check if company exists
@@ -92,14 +101,16 @@ export class CompanyService {
     // Check if new name already exists (if name is being updated)
     if (updateCompanyDto.name) {
       const existingCompany = await this.prisma.company.findFirst({
-        where: { 
+        where: {
           name: updateCompanyDto.name,
           NOT: { id },
         },
       });
 
       if (existingCompany) {
-        this.logger.warn(`Company with name ${updateCompanyDto.name} already exists`);
+        this.logger.warn(
+          `Company with name ${updateCompanyDto.name} already exists`,
+        );
         throw new CompanyAlreadyExistsException();
       }
     }
@@ -107,14 +118,16 @@ export class CompanyService {
     // Check if new INN already exists (if INN is being updated)
     if (updateCompanyDto.inn) {
       const existingCompanyByInn = await this.prisma.company.findFirst({
-        where: { 
+        where: {
           inn: updateCompanyDto.inn,
           NOT: { id },
         },
       });
 
       if (existingCompanyByInn) {
-        this.logger.warn(`Company with INN ${updateCompanyDto.inn} already exists`);
+        this.logger.warn(
+          `Company with INN ${updateCompanyDto.inn} already exists`,
+        );
         throw new CompanyAlreadyExistsException();
       }
     }
@@ -185,14 +198,8 @@ export class CompanyService {
     return users;
   }
 
-  async createInvitation(
-    companyId: number,
-    email: string,
-    invitedBy: number,
-  ) {
-    this.logger.log(
-      `Creating invitation for ${email} to company ${companyId}`,
-    );
+  async createInvitation(companyId: number, email: string, invitedBy: number) {
+    this.logger.log(`Creating invitation for ${email} to company ${companyId}`);
 
     // Verify company exists
     await this.findOne(companyId);
@@ -356,7 +363,9 @@ export class CompanyService {
       });
     }
 
-    this.logger.log(`User ${userId} added to company ${companyId} successfully`);
+    this.logger.log(
+      `User ${userId} added to company ${companyId} successfully`,
+    );
 
     return this.prisma.user.findUnique({
       where: { id: userId },
@@ -521,10 +530,15 @@ export class CompanyService {
 
     // Prepare user data update
     const userUpdateData: any = {};
-    if (updateUserDto.full_name) userUpdateData.full_name = updateUserDto.full_name;
-    if (updateUserDto.phone !== undefined) userUpdateData.phone = updateUserDto.phone;
+    if (updateUserDto.full_name)
+      userUpdateData.full_name = updateUserDto.full_name;
+    if (updateUserDto.phone !== undefined)
+      userUpdateData.phone = updateUserDto.phone;
     if (updateUserDto.password) {
-      userUpdateData.password_hash = await bcrypt.hash(updateUserDto.password, 10);
+      userUpdateData.password_hash = await bcrypt.hash(
+        updateUserDto.password,
+        10,
+      );
     }
 
     // Update user and profile in transaction
@@ -612,7 +626,9 @@ export class CompanyService {
       },
     });
 
-    this.logger.log(`User ${userId} removed from company ${companyId} successfully`);
+    this.logger.log(
+      `User ${userId} removed from company ${companyId} successfully`,
+    );
     return { message: 'User removed successfully' };
   }
 }

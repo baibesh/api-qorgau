@@ -1,4 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
+import { CompanyType } from '@prisma/client';
 
 export class CompanyResponseDto {
   @ApiProperty({
@@ -40,6 +41,13 @@ export class CompanyResponseDto {
     nullable: true,
   })
   regionId: number | null;
+
+  @ApiProperty({
+    description: 'Type of the company',
+    enum: CompanyType,
+    example: CompanyType.PROJECT,
+  })
+  type: CompanyType;
 
   @ApiProperty({
     description: 'Date when the company was created',

@@ -6,7 +6,9 @@ import {
   IsOptional,
   IsInt,
   Min,
+  IsEnum,
 } from 'class-validator';
+import { CompanyType } from '@prisma/client';
 
 export class CreateCompanyDto {
   @ApiProperty({
@@ -55,4 +57,15 @@ export class CreateCompanyDto {
   @Min(1)
   @IsOptional()
   regionId?: number;
+
+  @ApiProperty({
+    description: 'Type of the company',
+    enum: CompanyType,
+    example: CompanyType.PROJECT,
+    default: CompanyType.PROJECT,
+    required: false,
+  })
+  @IsEnum(CompanyType)
+  @IsOptional()
+  type?: CompanyType;
 }
