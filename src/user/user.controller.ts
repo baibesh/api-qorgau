@@ -12,6 +12,8 @@ import {
   UseInterceptors,
   UploadedFile,
   Res,
+  Req,
+  UseGuards,
 } from '@nestjs/common';
 import type { Response } from 'express';
 import {
@@ -21,7 +23,9 @@ import {
   ApiQuery,
   ApiConsumes,
   ApiBody,
+  ApiBearerAuth,
 } from '@nestjs/swagger';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { randomUUID } from 'crypto';
@@ -298,6 +302,82 @@ export class UserController {
     @Res() res: Response,
   ) {
     return this.userService.getAvatar(id, res);
+  }
+
+  @Get('me/projects')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get all projects created by current authenticated user' })
+  @ApiResponse({
+    status: 200,
+    description: 'List of projects created by the current user',
+    schema: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          id: { type: 'number' },
+          name: { type: 'string' },
+          code: { type: 'string', nullable: true },
+          regionId: { type: 'number' },
+          region: {
+            type: 'object',
+            properties: {
+              id: { type: 'number' },
+              name: { type: 'string' },
+            },
+          },
+          statusId: { type: 'number' },
+          status: {
+            type: 'object',
+            properties: {
+              id: { type: 'number' },
+              name: { type: 'string' },
+              description: { type: 'string' },
+            },
+          },
+          contactName: { type: 'string' },
+          contactPhone: { type: 'string', nullable: true },
+          contactEmail: { type: 'string', nullable: true },
+          companyId: { type: 'number', nullable: true },
+          company: {
+            type: 'object',
+            nullable: true,
+            properties: {
+              id: { type: 'number' },
+              name: { type: 'string' },
+              description: { type: 'string', nullable: true },
+            },
+          },
+          createdBy: { type: 'number' },
+          creator: {
+            type: 'object',
+            properties: {
+              id: { type: 'number' },
+              email: { type: 'string' },
+              full_name: { type: 'string' },
+              avatar: { type: 'string', nullable: true },
+            },
+          },
+          kanbanColumnId: { type: 'number' },
+          kanbanColumn: {
+            type: 'object',
+            properties: {
+              id: { type: 'number' },
+              name: { type: 'string' },
+              position: { type: 'number' },
+            },
+          },
+          createdAt: { type: 'string', format: 'date-time' },
+          updatedAt: { type: 'string', format: 'date-time' },
+        },
+      },
+    },
+  })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 404, description: 'User not found' })
+  getUserProjects(@Req() req: any) {
+    return this.userService.getUserProjects(req.user.userId);
   }
 
   @Get(':id/profile')

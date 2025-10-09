@@ -470,6 +470,97 @@ export class UserService {
     return { users, projects, companies };
   }
 
+  async getUserProjects(userId: number) {
+    this.logger.log(`Fetching projects created by user ${userId}`);
+
+    // Check if user exists and is not deleted
+    const user = await this.prisma.user.findFirst({
+      where: { id: userId, isDeleted: false },
+    });
+
+    if (!user) {
+      throw new NotFoundException(`User with ID ${userId} not found`);
+    }
+
+    // Fetch all projects created by this user
+    const projects = await this.prisma.project.findMany({
+      where: {
+        createdBy: userId,
+      },
+      include: {
+        region: true,
+        status: true,
+        company: true,
+        creator: {
+          select: {
+            id: true,
+            email: true,
+            full_name: true,
+            profile: {
+              select: {
+                avatar: true,
+              },
+            },
+          },
+        },
+        kanbanColumn: true,
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+    });
+
+    this.logger.log(`Found ${projects.length} projects created by user ${userId}`);
+
+    return projects.map((project) => ({
+      id: project.id,
+      name: project.name,
+      code: project.code ?? null,
+      regionId: project.regionId,
+      region: project.region
+        ? { id: project.region.id, name: project.region.name }
+        : null,
+      statusId: project.statusId,
+      status: project.status
+        ? {
+            id: project.status.id,
+            name: project.status.name,
+            description: project.status.description,
+          }
+        : null,
+      contactName: project.contactName,
+      contactPhone: project.contactPhone ?? null,
+      contactEmail: project.contactEmail ?? null,
+      companyId: project.companyId ?? null,
+      company: project.company
+        ? {
+            id: project.company.id,
+            name: project.company.name,
+            description: project.company.description ?? null,
+          }
+        : null,
+      createdBy: project.createdBy,
+      creator: project.creator
+        ? {
+            id: project.creator.id,
+            email: project.creator.email,
+            full_name: project.creator.full_name,
+            avatar: project.creator.profile?.avatar || null,
+          }
+        : null,
+      kanbanColumnId: project.kanbanColumnId,
+      kanbanColumn: project.kanbanColumn
+        ? {
+            id: project.kanbanColumn.id,
+            name: project.kanbanColumn.name,
+            position: project.kanbanColumn.position,
+          }
+        : null,
+      createdAt: project.createdAt,
+      updatedAt: project.updatedAt,
+    }));
+  }
+
   private formatUserResponse(user: any) {
     const {
       password_hash,

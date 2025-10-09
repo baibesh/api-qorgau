@@ -38,6 +38,8 @@ export class CompanyController {
   constructor(private readonly companyService: CompanyService) {}
 
   @Post()
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Create a new company' })
   @ApiBody({ type: CreateCompanyDto })
   @ApiResponse({
@@ -53,8 +55,15 @@ export class CompanyController {
     status: 400,
     description: 'Validation error',
   })
-  create(@Body() createCompanyDto: CreateCompanyDto): Promise<CompanyResponseDto> {
-    return this.companyService.create(createCompanyDto);
+  @ApiResponse({
+    status: 401,
+    description: 'Unauthorized',
+  })
+  create(
+    @Body() createCompanyDto: CreateCompanyDto,
+    @Req() req: any,
+  ): Promise<CompanyResponseDto> {
+    return this.companyService.create(createCompanyDto, req.user.userId);
   }
 
   @Get()
@@ -185,7 +194,9 @@ export class CompanyController {
   @Permissions('company-users:invite')
   @CompanyScope()
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Create an invitation for a user to join the company' })
+  @ApiOperation({
+    summary: 'Create an invitation for a user to join the company',
+  })
   @ApiParam({
     name: 'id',
     type: 'number',
@@ -464,5 +475,36 @@ export class CompanyController {
     @Param('userId', ParseIntPipe) userId: number,
   ) {
     return this.companyService.removeCompanyUser(id, userId);
+  }
+
+  @Get(':id/projects')
+  @UseGuards(JwtAuthGuard, CompanyScopeGuard)
+  @CompanyScope()
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get all projects of a company' })
+  @ApiParam({
+    name: 'id',
+    type: 'number',
+    description: 'Company ID',
+    example: 2,
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'List of company projects',
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'Company not found',
+  })
+  @ApiResponse({
+    status: 401,
+    description: 'Unauthorized',
+  })
+  @ApiResponse({
+    status: 403,
+    description: 'Forbidden - accessing wrong company',
+  })
+  getCompanyProjects(@Param('id', ParseIntPipe) id: number) {
+    return this.companyService.getCompanyProjects(id);
   }
 }

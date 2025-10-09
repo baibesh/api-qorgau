@@ -19,8 +19,9 @@ export class CompanyService {
 
   async create(
     createCompanyDto: CreateCompanyDto,
+    createdById: number,
   ): Promise<CompanyResponseDto> {
-    this.logger.log(`Creating company with name: ${createCompanyDto.name}`);
+    this.logger.log(`Creating company with name: ${createCompanyDto.name} by user ${createdById}`);
 
     // Check if company with this name already exists
     const existingCompany = await this.prisma.company.findFirst({
@@ -49,10 +50,17 @@ export class CompanyService {
     }
 
     const company = await this.prisma.company.create({
-      data: createCompanyDto,
+      data: {
+        ...createCompanyDto,
+        createdById,
+      },
+      include: {
+        region: { select: { name: true } },
+        createdBy: { select: { id: true, full_name: true, email: true } },
+      },
     });
 
-    this.logger.log(`Company created with id: ${company.id}`);
+    this.logger.log(`Company created with id: ${company.id} by user ${createdById}`);
     return company;
   }
 
@@ -740,5 +748,49 @@ export class CompanyService {
       `User ${userId} removed from company ${companyId} successfully`,
     );
     return { message: 'User removed successfully' };
+  }
+
+  async getCompanyProjects(companyId: number) {
+    this.logger.log(`Fetching projects for company ${companyId}`);
+
+    // Verify company exists
+    await this.findOne(companyId);
+
+    const projects = await this.prisma.project.findMany({
+      where: {
+        companyId: companyId,
+      },
+      include: {
+        region: true,
+        status: true,
+        company: true,
+        executors: {
+          select: {
+            id: true,
+            email: true,
+            full_name: true,
+          },
+        },
+        creator: {
+          select: {
+            id: true,
+            email: true,
+            full_name: true,
+            profile: {
+              select: {
+                avatar: true,
+              },
+            },
+          },
+        },
+        kanbanColumn: true,
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+    });
+
+    this.logger.log(`Found ${projects.length} projects for company ${companyId}`);
+    return projects;
   }
 }

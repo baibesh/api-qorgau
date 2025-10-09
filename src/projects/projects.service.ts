@@ -150,6 +150,28 @@ export class ProjectsService {
       throw new ConflictException(`Проект с названием "${name}" уже существует`);
     }
 
+    // Get user's company if not explicitly provided
+    let finalCompanyId = companyId;
+    if (!finalCompanyId) {
+      const user = await this.prisma.user.findUnique({
+        where: { id: createdBy },
+        include: {
+          profile: {
+            select: {
+              companyId: true,
+            },
+          },
+        },
+      });
+
+      if (user?.profile?.companyId) {
+        finalCompanyId = user.profile.companyId;
+        this.logger.log(
+          `Using user's company ${finalCompanyId} for project creation`,
+        );
+      }
+    }
+
     const baseData: any = {
       name,
       code,
@@ -166,7 +188,7 @@ export class ProjectsService {
         : {}),
       creator: { connect: { id: createdBy } },
       kanbanColumn: { connect: { id: kanbanColumnId } },
-      ...(companyId ? { company: { connect: { id: companyId } } } : {}),
+      ...(finalCompanyId ? { company: { connect: { id: finalCompanyId } } } : {}),
     };
 
     const includeBase: any = {
@@ -444,6 +466,22 @@ export class ProjectsService {
         set: (updateProjectDto.executorIds || []).map((id) => ({ id })),
       };
       delete updateData.executorIds;
+    }
+
+    // Merge attached files instead of replacing them
+    if (updateProjectDto.attachedFiles !== undefined) {
+      const currentFiles = Array.isArray(currentProject.attachedFiles)
+        ? currentProject.attachedFiles
+        : [];
+      const newFiles = Array.isArray(updateProjectDto.attachedFiles)
+        ? updateProjectDto.attachedFiles
+        : [];
+
+      // Merge old and new files, removing duplicates
+      const mergedFiles = [...new Set([...currentFiles, ...newFiles])];
+      updateData.attachedFiles = mergedFiles;
+
+      this.logger.log(`Merging files for project ${id}: ${currentFiles.length} existing + ${newFiles.length} new = ${mergedFiles.length} total`);
     }
 
     try {
