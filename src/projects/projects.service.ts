@@ -1,4 +1,9 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  NotFoundException,
+  ConflictException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateProjectDto } from './dto/create-project.dto';
 import { UpdateProjectDto } from './dto/update-project.dto';
@@ -23,9 +28,18 @@ export class ProjectsService {
       return [];
     }
 
+    // Filter and convert to valid numbers only
+    const validFileIds = fileIds
+      .map((id: any) => Number(id))
+      .filter((id: number) => !isNaN(id) && id > 0);
+
+    if (validFileIds.length === 0) {
+      return [];
+    }
+
     const files = await this.prisma.file.findMany({
       where: {
-        id: { in: fileIds.map((id: any) => Number(id)) },
+        id: { in: validFileIds },
       },
       select: {
         id: true,
@@ -125,6 +139,16 @@ export class ProjectsService {
       expectedDeadline,
       comments,
     } = createProjectDto;
+
+    // Check if project with exact name already exists
+    const existingProject = await this.prisma.project.findFirst({
+      where: { name: { equals: name, mode: 'insensitive' } },
+    });
+
+    if (existingProject) {
+      this.logger.warn(`Project with name "${name}" already exists`);
+      throw new ConflictException(`Проект с названием "${name}" уже существует`);
+    }
 
     const baseData: any = {
       name,
