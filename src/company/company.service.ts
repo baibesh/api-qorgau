@@ -165,6 +165,7 @@ export class CompanyService {
         profile: {
           companyId: companyId,
         },
+        isDeleted: false,
       },
       select: {
         id: true,
@@ -253,10 +254,8 @@ export class CompanyService {
   async deactivateUser(companyId: number, userId: number) {
     this.logger.log(`Deactivating user ${userId} from company ${companyId}`);
 
-    // Verify company exists
     await this.findOne(companyId);
 
-    // Verify user belongs to this company
     const user = await this.prisma.user.findFirst({
       where: {
         id: userId,
@@ -409,8 +408,119 @@ export class CompanyService {
     // Check if user with this email already exists
     const existingUser = await this.prisma.user.findUnique({
       where: { email: addUserDto.email },
+      include: {
+        profile: true,
+      },
     });
 
+    // If user exists and is deleted, restore and update them
+    if (existingUser && existingUser.isDeleted) {
+      this.logger.log(
+        `User ${addUserDto.email} was deleted, restoring and updating`,
+      );
+
+      // Hash new password
+      const hashedPassword = await bcrypt.hash(addUserDto.password, 10);
+
+      // Get COMPANY_USER role
+      const companyUserRole = await this.prisma.role.findUnique({
+        where: { name: 'COMPANY_USER' },
+      });
+
+      if (!companyUserRole) {
+        throw new Error('COMPANY_USER role not found');
+      }
+
+      // Restore and update user in transaction
+      const user = await this.prisma.$transaction(async (tx) => {
+        // Update user data and restore
+        const updatedUser = await tx.user.update({
+          where: { id: existingUser.id },
+          data: {
+            full_name: addUserDto.full_name,
+            password_hash: hashedPassword,
+            phone: addUserDto.phone,
+            status: 'ACTIVE',
+            isDeleted: false,
+            region_id: company.regionId,
+          },
+        });
+
+        // Update or create user profile with company
+        if (existingUser.profile) {
+          await tx.userProfile.update({
+            where: { userId: existingUser.id },
+            data: {
+              companyId: companyId,
+              position: addUserDto.position,
+            },
+          });
+        } else {
+          await tx.userProfile.create({
+            data: {
+              userId: existingUser.id,
+              companyId: companyId,
+              position: addUserDto.position,
+            },
+          });
+        }
+
+        // Check if COMPANY_USER role already assigned
+        const existingRole = await tx.userRole.findFirst({
+          where: {
+            userId: existingUser.id,
+            roleId: companyUserRole.id,
+          },
+        });
+
+        if (!existingRole) {
+          await tx.userRole.create({
+            data: {
+              userId: existingUser.id,
+              roleId: companyUserRole.id,
+              assignedBy: createdBy,
+            },
+          });
+        }
+
+        return updatedUser;
+      });
+
+      this.logger.log(
+        `User ${user.id} restored and updated for company ${companyId}`,
+      );
+
+      // Return user with profile and roles
+      return this.prisma.user.findUnique({
+        where: { id: user.id },
+        select: {
+          id: true,
+          email: true,
+          full_name: true,
+          phone: true,
+          status: true,
+          registered_at: true,
+          profile: {
+            select: {
+              companyId: true,
+              position: true,
+            },
+          },
+          userRoles: {
+            select: {
+              role: {
+                select: {
+                  name: true,
+                  description: true,
+                },
+              },
+            },
+          },
+        },
+      });
+    }
+
+    // If user exists and is not deleted, throw error
     if (existingUser) {
       this.logger.warn(`User with email ${addUserDto.email} already exists`);
       throw new Error('User with this email already exists');
