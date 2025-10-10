@@ -491,6 +491,170 @@ export class CompanyController {
   @ApiResponse({
     status: 200,
     description: 'List of company projects',
+    schema: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          id: {
+            type: 'number',
+            example: 1,
+            description: 'Project ID',
+          },
+          name: {
+            type: 'string',
+            example: 'New Infrastructure Project',
+            description: 'Project name',
+          },
+          code: {
+            type: 'string',
+            nullable: true,
+            example: 'INFRA-2024-001',
+            description: 'Project code',
+          },
+          regionId: {
+            type: 'number',
+            example: 1,
+            description: 'Region ID',
+          },
+          region: {
+            type: 'object',
+            description: 'Region information',
+            properties: {
+              id: { type: 'number', example: 1 },
+              name: { type: 'string', example: 'Almaty' },
+            },
+          },
+          statusId: {
+            type: 'number',
+            example: 1,
+            description: 'Project status ID',
+          },
+          status: {
+            type: 'object',
+            description: 'Project status information',
+            properties: {
+              id: { type: 'number', example: 1 },
+              name: { type: 'string', example: 'In Progress' },
+              description: { type: 'string', example: 'Project is in progress' },
+            },
+          },
+          contactName: {
+            type: 'string',
+            example: 'John Doe',
+            description: 'Contact person name',
+          },
+          contactPhone: {
+            type: 'string',
+            nullable: true,
+            example: '+7 777 123 4567',
+            description: 'Contact phone number',
+          },
+          contactEmail: {
+            type: 'string',
+            nullable: true,
+            example: 'john.doe@example.com',
+            description: 'Contact email address',
+          },
+          companyId: {
+            type: 'number',
+            nullable: true,
+            example: 2,
+            description: 'Company ID',
+          },
+          company: {
+            type: 'object',
+            nullable: true,
+            description: 'Company information',
+            properties: {
+              id: { type: 'number', example: 2 },
+              name: { type: 'string', example: 'Tech Corp' },
+              description: {
+                type: 'string',
+                nullable: true,
+                example: 'Technology company',
+              },
+            },
+          },
+          executors: {
+            type: 'array',
+            description: 'List of executors assigned to the project',
+            items: {
+              type: 'object',
+              properties: {
+                id: { type: 'number', example: 5 },
+                email: { type: 'string', example: 'executor@example.com' },
+                full_name: { type: 'string', example: 'Jane Smith' },
+              },
+            },
+          },
+          createdBy: {
+            type: 'number',
+            example: 1,
+            description: 'Creator user ID',
+          },
+          creator: {
+            type: 'object',
+            description: 'Creator information',
+            properties: {
+              id: { type: 'number', example: 1 },
+              email: { type: 'string', example: 'creator@example.com' },
+              full_name: { type: 'string', example: 'Admin User' },
+              profile: {
+                type: 'object',
+                nullable: true,
+                properties: {
+                  avatar: {
+                    type: 'string',
+                    nullable: true,
+                    example: 'storage/avatars/abc123.jpg',
+                  },
+                },
+              },
+            },
+          },
+          kanbanColumnId: {
+            type: 'number',
+            example: 1,
+            description: 'Kanban column ID',
+          },
+          kanbanColumn: {
+            type: 'object',
+            description: 'Kanban column information',
+            properties: {
+              id: { type: 'number', example: 1 },
+              name: { type: 'string', example: 'To Do' },
+              position: { type: 'number', example: 1 },
+            },
+          },
+          expectedDeadline: {
+            type: 'string',
+            format: 'date-time',
+            nullable: true,
+            example: '2024-12-31T23:59:59.000Z',
+            description: 'Expected deadline',
+          },
+          comments: {
+            type: 'string',
+            nullable: true,
+            example: 'Initial project setup',
+            description: 'Project comments',
+          },
+          createdAt: {
+            type: 'string',
+            format: 'date-time',
+            example: '2024-08-07T05:56:00.000Z',
+            description: 'Creation timestamp',
+          },
+          updatedAt: {
+            type: 'string',
+            format: 'date-time',
+            example: '2024-08-07T05:56:00.000Z',
+            description: 'Last update timestamp',
+          },
+        },
+      },
+    },
   })
   @ApiResponse({
     status: 404,

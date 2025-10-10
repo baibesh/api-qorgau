@@ -102,12 +102,20 @@ export class CreateProjectDto {
   kanbanColumnId: number;
 
   @ApiProperty({
-    description: 'Attached files as JSON',
-    example: '[]',
+    description: 'Attached file IDs - can be array of numbers or array of objects with id property',
+    example: [1, 2, 3],
     required: false,
+    type: 'array',
+    items: {
+      oneOf: [
+        { type: 'number', example: 1 },
+        { type: 'object', properties: { id: { type: 'number', example: 1 } } }
+      ]
+    }
   })
   @IsOptional()
-  attachedFiles?: any;
+  @IsArray()
+  attachedFiles?: Array<number | { id: number }>;
 
   @ApiProperty({
     description: 'Expected deadline',

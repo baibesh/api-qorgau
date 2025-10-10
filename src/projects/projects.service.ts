@@ -172,13 +172,28 @@ export class ProjectsService {
       }
     }
 
+    // Process attachedFiles - extract IDs if objects are provided
+    let processedAttachedFiles: any[] = [];
+    if (attachedFiles && Array.isArray(attachedFiles)) {
+      processedAttachedFiles = attachedFiles.map((file: any) => {
+        // If file is an object with id property, extract the id
+        if (typeof file === 'object' && file !== null && 'id' in file) {
+          return file.id;
+        }
+        // Otherwise, assume it's already an ID
+        return file;
+      }).filter((id: any) => id !== null && id !== undefined);
+
+      this.logger.log(`Processing attached files: received ${attachedFiles.length} files, extracted ${processedAttachedFiles.length} IDs: [${processedAttachedFiles.join(', ')}]`);
+    }
+
     const baseData: any = {
       name,
       code,
       contactName,
       contactPhone,
       contactEmail,
-      attachedFiles: attachedFiles || [],
+      attachedFiles: processedAttachedFiles,
       expectedDeadline: expectedDeadline ? new Date(expectedDeadline) : null,
       comments,
       region: { connect: { id: regionId } },
@@ -473,15 +488,25 @@ export class ProjectsService {
       const currentFiles = Array.isArray(currentProject?.attachedFiles)
         ? currentProject.attachedFiles
         : [];
-      const newFiles = Array.isArray(updateProjectDto.attachedFiles)
-        ? updateProjectDto.attachedFiles
-        : [];
+
+      // Process new files - extract IDs if objects are provided
+      let processedNewFiles: any[] = [];
+      if (Array.isArray(updateProjectDto.attachedFiles)) {
+        processedNewFiles = updateProjectDto.attachedFiles.map((file: any) => {
+          // If file is an object with id property, extract the id
+          if (typeof file === 'object' && file !== null && 'id' in file) {
+            return file.id;
+          }
+          // Otherwise, assume it's already an ID
+          return file;
+        }).filter((id: any) => id !== null && id !== undefined);
+      }
 
       // Merge old and new files, removing duplicates
-      const mergedFiles = [...new Set([...currentFiles, ...newFiles])];
+      const mergedFiles = [...new Set([...currentFiles, ...processedNewFiles])];
       updateData.attachedFiles = mergedFiles;
 
-      this.logger.log(`Merging files for project ${id}: ${currentFiles.length} existing + ${newFiles.length} new = ${mergedFiles.length} total`);
+      this.logger.log(`Merging files for project ${id}: ${currentFiles.length} existing + ${processedNewFiles.length} new = ${mergedFiles.length} total`);
     }
 
     try {
