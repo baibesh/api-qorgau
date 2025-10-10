@@ -470,7 +470,7 @@ export class ProjectsService {
 
     // Merge attached files instead of replacing them
     if (updateProjectDto.attachedFiles !== undefined) {
-      const currentFiles = Array.isArray(currentProject.attachedFiles)
+      const currentFiles = Array.isArray(currentProject?.attachedFiles)
         ? currentProject.attachedFiles
         : [];
       const newFiles = Array.isArray(updateProjectDto.attachedFiles)
