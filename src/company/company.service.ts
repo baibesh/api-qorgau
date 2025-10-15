@@ -299,6 +299,46 @@ export class CompanyService {
     return updatedUser;
   }
 
+  async activateUser(companyId: number, userId: number) {
+    this.logger.log(`Activating user ${userId} in company ${companyId}`);
+
+    await this.findOne(companyId);
+
+    const user = await this.prisma.user.findFirst({
+      where: {
+        id: userId,
+        profile: {
+          companyId: companyId,
+        },
+      },
+      include: {
+        profile: { select: { companyId: true } },
+      },
+    });
+
+    if (!user) {
+      this.logger.warn(
+        `User ${userId} not found or does not belong to company ${companyId}`,
+      );
+      throw new Error('User not found or does not belong to this company');
+    }
+
+    // Update user status to ACTIVE
+    const updatedUser = await this.prisma.user.update({
+      where: { id: userId },
+      data: { status: 'ACTIVE' },
+      select: {
+        id: true,
+        email: true,
+        full_name: true,
+        status: true,
+      },
+    });
+
+    this.logger.log(`User ${userId} activated successfully`);
+    return updatedUser;
+  }
+
   async addUserToCompany(
     companyId: number,
     userId: number,
@@ -748,6 +788,177 @@ export class CompanyService {
       `User ${userId} removed from company ${companyId} successfully`,
     );
     return { message: 'User removed successfully' };
+  }
+
+  async assignRoleToUser(
+    companyId: number,
+    userId: number,
+    roleId: number,
+    assignedBy: number,
+  ) {
+    this.logger.log(
+      `Assigning role ${roleId} to user ${userId} in company ${companyId}`,
+    );
+
+    // Verify company exists
+    await this.findOne(companyId);
+
+    // Verify user belongs to this company
+    const user = await this.prisma.user.findFirst({
+      where: {
+        id: userId,
+        profile: {
+          companyId: companyId,
+        },
+        isDeleted: false,
+      },
+    });
+
+    if (!user) {
+      this.logger.warn(
+        `User ${userId} not found or does not belong to company ${companyId}`,
+      );
+      throw new Error('User not found or does not belong to this company');
+    }
+
+    // Verify role exists
+    const role = await this.prisma.role.findUnique({
+      where: { id: roleId },
+    });
+
+    if (!role) {
+      this.logger.warn(`Role ${roleId} not found`);
+      throw new Error('Role not found');
+    }
+
+    // Check if role is already assigned
+    const existingRole = await this.prisma.userRole.findFirst({
+      where: {
+        userId,
+        roleId,
+      },
+    });
+
+    if (existingRole) {
+      this.logger.warn(
+        `Role ${roleId} is already assigned to user ${userId}`,
+      );
+      throw new Error('Role is already assigned to this user');
+    }
+
+    // Assign role
+    await this.prisma.userRole.create({
+      data: {
+        userId,
+        roleId,
+        assignedBy,
+      },
+    });
+
+    this.logger.log(
+      `Role ${roleId} assigned to user ${userId} successfully`,
+    );
+
+    // Return updated user with roles
+    return this.prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        email: true,
+        full_name: true,
+        status: true,
+        userRoles: {
+          select: {
+            role: {
+              select: {
+                id: true,
+                name: true,
+                description: true,
+              },
+            },
+          },
+        },
+      },
+    });
+  }
+
+  async removeRoleFromUser(
+    companyId: number,
+    userId: number,
+    roleId: number,
+  ) {
+    this.logger.log(
+      `Removing role ${roleId} from user ${userId} in company ${companyId}`,
+    );
+
+    // Verify company exists
+    await this.findOne(companyId);
+
+    // Verify user belongs to this company
+    const user = await this.prisma.user.findFirst({
+      where: {
+        id: userId,
+        profile: {
+          companyId: companyId,
+        },
+        isDeleted: false,
+      },
+    });
+
+    if (!user) {
+      this.logger.warn(
+        `User ${userId} not found or does not belong to company ${companyId}`,
+      );
+      throw new Error('User not found or does not belong to this company');
+    }
+
+    // Check if role is assigned
+    const userRole = await this.prisma.userRole.findFirst({
+      where: {
+        userId,
+        roleId,
+      },
+    });
+
+    if (!userRole) {
+      this.logger.warn(
+        `Role ${roleId} is not assigned to user ${userId}`,
+      );
+      throw new Error('Role is not assigned to this user');
+    }
+
+    // Remove role
+    await this.prisma.userRole.delete({
+      where: {
+        id: userRole.id,
+      },
+    });
+
+    this.logger.log(
+      `Role ${roleId} removed from user ${userId} successfully`,
+    );
+
+    // Return updated user with roles
+    return this.prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        email: true,
+        full_name: true,
+        status: true,
+        userRoles: {
+          select: {
+            role: {
+              select: {
+                id: true,
+                name: true,
+                description: true,
+              },
+            },
+          },
+        },
+      },
+    });
   }
 
   async getCompanyProjects(companyId: number) {

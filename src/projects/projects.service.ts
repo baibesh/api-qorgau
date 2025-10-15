@@ -3,8 +3,11 @@ import {
   Logger,
   NotFoundException,
   ConflictException,
+  Inject,
+  forwardRef,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import { CreateProjectDto } from './dto/create-project.dto';
 import { UpdateProjectDto } from './dto/update-project.dto';
 import { ProjectResponseDto } from './dto/project-response.dto';
@@ -14,12 +17,17 @@ import {
   CheckProjectNameResponseDto,
   SimilarProjectDto,
 } from './dto/check-project-name-response.dto';
+import { NotificationType } from '@prisma/client';
 
 @Injectable()
 export class ProjectsService {
   private readonly logger = new Logger(ProjectsService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Inject(forwardRef(() => NotificationsService))
+    private readonly notificationsService: NotificationsService,
+  ) {}
 
   private async enrichAttachedFiles(
     fileIds: any,
@@ -241,6 +249,29 @@ export class ProjectsService {
       });
 
       this.logger.log(`Project created with id: ${project.id}`);
+
+      // Send notifications to executors about assignment
+      if (executorIds && executorIds.length > 0) {
+        for (const executorId of executorIds) {
+          try {
+            await this.notificationsService.create({
+              userId: executorId,
+              type: NotificationType.PROJECT_ASSIGNED,
+              title: 'Вам назначен новый проект',
+              message: `Вам назначен проект "${project.name}"`,
+              entityType: 'project',
+              entityId: project.id,
+              createdBy: createdBy,
+            });
+          } catch (error) {
+            this.logger.error(
+              `Failed to send notification to executor ${executorId}:`,
+              error,
+            );
+          }
+        }
+      }
+
       return await this.mapToDto(project);
     } catch (e: any) {
       throw e;
@@ -470,15 +501,32 @@ export class ProjectsService {
     // Get current project data for logging changes
     const currentProject = await this.prisma.project.findUnique({
       where: { id },
+      include: {
+        executors: {
+          select: {
+            id: true,
+          },
+        },
+      },
     });
 
     const updateData: any = { ...updateProjectDto };
     if (updateProjectDto.expectedDeadline) {
       updateData.expectedDeadline = new Date(updateProjectDto.expectedDeadline);
     }
+
+    // Track executor changes for notifications
+    let newExecutorIds: number[] = [];
     if (updateProjectDto.executorIds !== undefined) {
+      const currentExecutorIds =
+        currentProject?.executors?.map((e) => e.id) || [];
+      const updatedExecutorIds = updateProjectDto.executorIds || [];
+      newExecutorIds = updatedExecutorIds.filter(
+        (id) => !currentExecutorIds.includes(id),
+      );
+
       updateData.executors = {
-        set: (updateProjectDto.executorIds || []).map((id) => ({ id })),
+        set: updatedExecutorIds.map((id) => ({ id })),
       };
       delete updateData.executorIds;
     }
@@ -537,6 +585,28 @@ export class ProjectsService {
 
       // Log changes
       await this.logChanges(id, currentProject, updateProjectDto, updatedBy);
+
+      // Send notifications to new executors
+      if (newExecutorIds.length > 0) {
+        for (const executorId of newExecutorIds) {
+          try {
+            await this.notificationsService.create({
+              userId: executorId,
+              type: NotificationType.PROJECT_ASSIGNED,
+              title: 'Вам назначен проект',
+              message: `Вам назначен проект "${project.name}"`,
+              entityType: 'project',
+              entityId: project.id,
+              createdBy: updatedBy,
+            });
+          } catch (error) {
+            this.logger.error(
+              `Failed to send notification to executor ${executorId}:`,
+              error,
+            );
+          }
+        }
+      }
 
       this.logger.log(`Project with id ${id} updated successfully`);
       return await this.mapToDto(project);
@@ -641,6 +711,31 @@ export class ProjectsService {
           newValue: updateStatusDto.statusId.toString(),
         },
       });
+
+      // Send notifications to all executors about status change
+      if (project.executors && project.executors.length > 0) {
+        const oldStatus = currentProject.status?.name || 'Unknown';
+        const newStatus = project.status?.name || 'Unknown';
+
+        for (const executor of project.executors) {
+          try {
+            await this.notificationsService.create({
+              userId: executor.id,
+              type: NotificationType.STATUS_CHANGED,
+              title: 'Изменен статус проекта',
+              message: `Статус проекта "${project.name}" изменен с "${oldStatus}" на "${newStatus}"`,
+              entityType: 'project',
+              entityId: project.id,
+              createdBy: updatedBy,
+            });
+          } catch (error) {
+            this.logger.error(
+              `Failed to send status change notification to executor ${executor.id}:`,
+              error,
+            );
+          }
+        }
+      }
 
       this.logger.log(`Status updated for project with id ${id}`);
       return await this.mapToDto(project);

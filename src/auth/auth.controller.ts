@@ -9,6 +9,7 @@ import {
   HttpCode,
   HttpStatus,
   Logger,
+  UnauthorizedException,
 } from '@nestjs/common';
 import type { Response, Request } from 'express';
 import {
@@ -91,10 +92,12 @@ export class AuthController {
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
   ): Promise<RefreshResponseDto> {
+    this.logger.log(`Refresh request - all cookies: ${JSON.stringify(req.cookies)}`);
     const refreshToken = req.cookies?.refresh_token;
 
     if (!refreshToken) {
-      throw new Error('Refresh token not found');
+      this.logger.error('Refresh token not found in cookies');
+      throw new UnauthorizedException('Refresh token not found');
     }
 
     const result = await this.authService.refresh(refreshToken);

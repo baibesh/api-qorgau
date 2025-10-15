@@ -288,6 +288,51 @@ export class CompanyController {
     return this.companyService.deactivateUser(id, userId);
   }
 
+  @Post(':id/users/:userId/activate')
+  @UseGuards(JwtAuthGuard, PermissionsGuard, CompanyScopeGuard)
+  @Permissions('company-users:deactivate')
+  @CompanyScope()
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Activate a user in the company' })
+  @ApiParam({
+    name: 'id',
+    type: 'number',
+    description: 'Company ID',
+    example: 2,
+  })
+  @ApiParam({
+    name: 'userId',
+    type: 'number',
+    description: 'User ID to activate',
+    example: 10,
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'User activated successfully',
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'Company or user not found',
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'User does not belong to this company',
+  })
+  @ApiResponse({
+    status: 401,
+    description: 'Unauthorized',
+  })
+  @ApiResponse({
+    status: 403,
+    description: 'Forbidden - missing permissions or accessing wrong company',
+  })
+  activateUser(
+    @Param('id', ParseIntPipe) id: number,
+    @Param('userId', ParseIntPipe) userId: number,
+  ) {
+    return this.companyService.activateUser(id, userId);
+  }
+
   @Post(':id/users/add-existing')
   @UseGuards(JwtAuthGuard, PermissionsGuard, CompanyScopeGuard)
   @Permissions('company-users:invite')
@@ -475,6 +520,122 @@ export class CompanyController {
     @Param('userId', ParseIntPipe) userId: number,
   ) {
     return this.companyService.removeCompanyUser(id, userId);
+  }
+
+  @Post(':id/users/:userId/roles')
+  @UseGuards(JwtAuthGuard, PermissionsGuard, CompanyScopeGuard)
+  @Permissions('company-users:invite')
+  @CompanyScope()
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Assign a role to a company user' })
+  @ApiParam({
+    name: 'id',
+    type: 'number',
+    description: 'Company ID',
+    example: 2,
+  })
+  @ApiParam({
+    name: 'userId',
+    type: 'number',
+    description: 'User ID',
+    example: 10,
+  })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        roleId: {
+          type: 'number',
+          example: 3,
+        },
+      },
+      required: ['roleId'],
+    },
+  })
+  @ApiResponse({
+    status: 201,
+    description: 'Role assigned successfully',
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'Company, user, or role not found',
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'User does not belong to this company or role already assigned',
+  })
+  @ApiResponse({
+    status: 401,
+    description: 'Unauthorized',
+  })
+  @ApiResponse({
+    status: 403,
+    description: 'Forbidden - missing permissions or accessing wrong company',
+  })
+  assignRoleToUser(
+    @Param('id', ParseIntPipe) id: number,
+    @Param('userId', ParseIntPipe) userId: number,
+    @Body('roleId', ParseIntPipe) roleId: number,
+    @Req() req: any,
+  ) {
+    return this.companyService.assignRoleToUser(
+      id,
+      userId,
+      roleId,
+      req.user.userId,
+    );
+  }
+
+  @Delete(':id/users/:userId/roles/:roleId')
+  @UseGuards(JwtAuthGuard, PermissionsGuard, CompanyScopeGuard)
+  @Permissions('company-users:invite')
+  @CompanyScope()
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Remove a role from a company user' })
+  @ApiParam({
+    name: 'id',
+    type: 'number',
+    description: 'Company ID',
+    example: 2,
+  })
+  @ApiParam({
+    name: 'userId',
+    type: 'number',
+    description: 'User ID',
+    example: 10,
+  })
+  @ApiParam({
+    name: 'roleId',
+    type: 'number',
+    description: 'Role ID',
+    example: 3,
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Role removed successfully',
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'Company, user, or role not found',
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'User does not belong to this company or role not assigned',
+  })
+  @ApiResponse({
+    status: 401,
+    description: 'Unauthorized',
+  })
+  @ApiResponse({
+    status: 403,
+    description: 'Forbidden - missing permissions or accessing wrong company',
+  })
+  removeRoleFromUser(
+    @Param('id', ParseIntPipe) id: number,
+    @Param('userId', ParseIntPipe) userId: number,
+    @Param('roleId', ParseIntPipe) roleId: number,
+  ) {
+    return this.companyService.removeRoleFromUser(id, userId, roleId);
   }
 
   @Get(':id/projects')

@@ -32,6 +32,12 @@ export class AuthService {
       throw new UnauthorizedException('Invalid credentials');
     }
 
+    // Check if user account is active
+    if (user.status !== 'ACTIVE') {
+      this.logger.warn(`Login attempt for inactive user: ${user.email} (status: ${user.status})`);
+      throw new UnauthorizedException('User account is not active');
+    }
+
     // Fetch user with profile and roles for JWT payload
     const userWithProfile = await this.prisma.user.findUnique({
       where: { id: user.id },
@@ -178,6 +184,7 @@ export class AuthService {
         refreshToken: newRefreshToken,
       };
     } catch (error) {
+      this.logger.error(`Refresh token validation failed: ${error.message}`);
       throw new UnauthorizedException('Invalid refresh token');
     }
   }

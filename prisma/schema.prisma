@@ -32,6 +32,18 @@ enum CompanyAddedVia {
   API
 }
 
+enum NotificationType {
+  PROJECT_CREATED
+  PROJECT_UPDATED
+  PROJECT_ASSIGNED
+  PROJECT_COMMENT
+  USER_MENTIONED
+  FILE_UPLOADED
+  DEADLINE_APPROACHING
+  STATUS_CHANGED
+  SYSTEM_ANNOUNCEMENT
+}
+
 model Region {
   id      Int       @id @default(autoincrement())
   name    String    @unique
@@ -141,6 +153,10 @@ model User {
   createdCompanies  Company[]    @relation("CompanyCreatedBy")
   approvedCompanies Company[]    @relation("CompanyApprovedBy")
   companyLogs       CompanyLog[]
+
+  notifications        Notification[]         @relation("NotificationRecipient")
+  createdNotifications Notification[]         @relation("NotificationCreatedBy")
+  notificationSettings NotificationSettings?
 
   @@index([region_id], map: "idx_user_region_id")
   @@index([status], map: "idx_user_status")
@@ -382,4 +398,57 @@ model CompanyLog {
   @@index([changedBy], map: "idx_company_log_changed_by")
   @@index([createdAt], map: "idx_company_log_created_at")
   @@index([companyId, createdAt], map: "idx_company_log_company_created_at")
+}
+
+model Notification {
+  id      Int              @id @default(autoincrement())
+  userId  Int
+  user    User             @relation("NotificationRecipient", fields: [userId], references: [id], onDelete: Cascade)
+  type    NotificationType
+  title   String
+  message String
+
+  // Метаданные для построения ссылки
+  entityType String? // "project", "comment", "file"
+  entityId   Int?    // ID проекта/комментария/файла
+
+  // Флаги
+  isRead    Boolean @default(false)
+  isDeleted Boolean @default(false)
+
+  // Кто создал (опционально)
+  createdBy Int?
+  creator   User? @relation("NotificationCreatedBy", fields: [createdBy], references: [id], onDelete: SetNull)
+
+  createdAt DateTime  @default(now())
+  readAt    DateTime?
+
+  @@index([userId, isRead, isDeleted], map: "idx_notification_user_read_deleted")
+  @@index([userId, createdAt], map: "idx_notification_user_created")
+  @@index([createdAt], map: "idx_notification_created_at")
+  @@index([type], map: "idx_notification_type")
+}
+
+model NotificationSettings {
+  id     Int  @id @default(autoincrement())
+  userId Int  @unique
+  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Звук
+  soundEnabled Boolean @default(true)
+  soundVolume  Int     @default(50) // 0-100
+
+  // Типы уведомлений (можно отключить определенные)
+  projectCreated      Boolean @default(true)
+  projectUpdated      Boolean @default(true)
+  projectAssigned     Boolean @default(true)
+  projectComment      Boolean @default(true)
+  userMentioned       Boolean @default(true)
+  fileUploaded        Boolean @default(true)
+  deadlineApproaching Boolean @default(true)
+  statusChanged       Boolean @default(true)
+  systemAnnouncement  Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
